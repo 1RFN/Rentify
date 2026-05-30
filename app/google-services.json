@@ -12,7 +12,12 @@
           "package_name": "com.irfanjayadi.rentify"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "617779268466-8rukuu27vf9nidigrlh53biq56d88fgi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDRMniJq_xehFcQO6QfqKh8hr_puZ2LM6w"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "617779268466-8rukuu27vf9nidigrlh53biq56d88fgi.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
