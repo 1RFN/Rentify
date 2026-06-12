@@ -43,6 +43,13 @@
             android:name=".view.owner.DashboardOwnerActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".view.owner.AddItemActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".view.owner.EditItemActivity"
+            android:exported="false"/>
     </application>
 
 </manifest>

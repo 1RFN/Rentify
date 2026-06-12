@@ -22,9 +22,10 @@ class ProfileFragment : Fragment() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var firestore: FirebaseFirestore
-
     private lateinit var tvProfileName: TextView
     private lateinit var ivProfilePicture: CircleImageView
+    private lateinit var btnModeRenter: LinearLayout
+    private lateinit var btnModeOwner: LinearLayout
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -38,27 +39,58 @@ class ProfileFragment : Fragment() {
 
         tvProfileName    = view.findViewById(R.id.tvProfileName)
         ivProfilePicture = view.findViewById(R.id.ivProfilePicture)
+        btnModeRenter    = view.findViewById(R.id.btnModeRenter)
+        btnModeOwner     = view.findViewById(R.id.btnModeOwner)
 
-        val btnModeOwner   = view.findViewById<LinearLayout>(R.id.btnModeOwner)
         val btnLogout      = view.findViewById<LinearLayout>(R.id.btnLogout)
         val btnEditProfile = view.findViewById<View>(R.id.btnEditProfile)
+
+        // Set tampilan default ke renter SEBELUM Firestore selesai loading
+        // Ini mencegah tampilan salah saat fragment pertama dibuka
+        updateModeButtonsUI("renter")
 
         btnEditProfile.setOnClickListener {
             startActivity(Intent(requireContext(), EditProfileActivity::class.java))
         }
 
+        // Tombol Mode Penyewa → beralih ke renter
+        btnModeRenter.setOnClickListener {
+            val userId = auth.currentUser?.uid ?: return@setOnClickListener
+            firestore.collection("users").document(userId).get()
+                .addOnSuccessListener { doc ->
+                    val currentRole = doc.getString("role") ?: "renter"
+                    if (currentRole == "renter") {
+                        Toast.makeText(
+                            requireContext(),
+                            "Anda sudah berada di Mode Penyewa",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        switchToRole(userId, "renter")
+                    }
+                }
+        }
+
+        // Tombol Mode Pemilik → beralih ke owner
         btnModeOwner.setOnClickListener {
             val userId = auth.currentUser?.uid ?: return@setOnClickListener
             firestore.collection("users").document(userId).get()
-                .addOnSuccessListener { document ->
-                    if (document != null && document.exists()) {
-                        val name    = document.getString("name")    ?: ""
-                        val phone   = document.getString("phone")   ?: ""
-                        val address = document.getString("address") ?: ""
+                .addOnSuccessListener { doc ->
+                    val currentRole = doc.getString("role") ?: "renter"
+                    if (currentRole == "owner") {
+                        Toast.makeText(
+                            requireContext(),
+                            "Anda sudah berada di Mode Pemilik",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        val name    = doc.getString("name")    ?: ""
+                        val phone   = doc.getString("phone")   ?: ""
+                        val address = doc.getString("address") ?: ""
                         if (name.isEmpty() || phone.isEmpty() || address.isEmpty()) {
                             showIncompleteProfileAlert()
                         } else {
-                            switchToOwnerMode(userId)
+                            switchToRole(userId, "owner")
                         }
                     }
                 }
@@ -76,25 +108,34 @@ class ProfileFragment : Fragment() {
 
     private fun fetchUserProfileData() {
         val userId = auth.currentUser?.uid ?: return
-
         firestore.collection("users").document(userId).get()
             .addOnSuccessListener { document ->
                 if (document == null || !document.exists() || !isAdded) return@addOnSuccessListener
-
                 tvProfileName.text = document.getString("name") ?: "Pengguna"
 
                 val photoUrl = document.getString("profilePhotoUrl") ?: ""
-                if (photoUrl.isNotEmpty()) {
-                    loadProfileImage(photoUrl)
-                } else {
-                    ivProfilePicture.setImageResource(R.drawable.ic_profile)
-                }
+                if (photoUrl.isNotEmpty()) loadProfileImage(photoUrl)
+                else ivProfilePicture.setImageResource(R.drawable.ic_profile)
+
+                // Update tombol sesuai role yang tersimpan di Firestore
+                val role = document.getString("role") ?: "renter"
+                updateModeButtonsUI(role)
             }
+    }
+
+    private fun updateModeButtonsUI(currentRole: String) {
+        if (!isAdded) return
+        if (currentRole == "renter") {
+            btnModeRenter.setBackgroundResource(R.drawable.bg_mode_selected)
+            btnModeOwner.setBackgroundResource(R.drawable.bg_mode_unselected)
+        } else {
+            btnModeRenter.setBackgroundResource(R.drawable.bg_mode_unselected)
+            btnModeOwner.setBackgroundResource(R.drawable.bg_mode_selected)
+        }
     }
 
     private fun loadProfileImage(url: String) {
         if (!isAdded) return
-
         Glide.with(requireContext())
             .load(url)
             .dontAnimate()
@@ -112,28 +153,53 @@ class ProfileFragment : Fragment() {
             .show()
     }
 
-    private fun switchToOwnerMode(userId: String) {
+    private fun switchToRole(userId: String, targetRole: String) {
         firestore.collection("users").document(userId)
-            .update("role", "owner")
+            .update("role", targetRole)
             .addOnSuccessListener {
-                Toast.makeText(context, "Berhasil beralih ke Mode Pemilik!", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(requireContext(), com.irfanjayadi.rentify.view.owner.DashboardOwnerActivity::class.java))
-                activity?.finish()
+                val ctx = context ?: return@addOnSuccessListener
+                if (!isAdded) return@addOnSuccessListener
+
+                if (targetRole == "owner") {
+                    Toast.makeText(ctx, "Beralih ke Mode Pemilik", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(
+                        ctx,
+                        com.irfanjayadi.rentify.view.owner.DashboardOwnerActivity::class.java
+                    ).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    startActivity(intent)
+                    activity?.overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+                } else {
+                    Toast.makeText(ctx, "Beralih ke Mode Penyewa", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(
+                        ctx,
+                        com.irfanjayadi.rentify.view.renter.HomeRenterActivity::class.java
+                    ).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    startActivity(intent)
+                    activity?.overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+                }
             }
             .addOnFailureListener { e ->
-                Toast.makeText(context, "Gagal beralih mode: ${e.message}", Toast.LENGTH_SHORT).show()
+                val ctx = context ?: return@addOnFailureListener
+                if (!isAdded) return@addOnFailureListener
+                Toast.makeText(ctx, "Gagal beralih: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 
     private fun showLogoutConfirmation() {
         AlertDialog.Builder(requireContext())
             .setTitle("Konfirmasi")
-            .setMessage("Apakah Anda yakin ingin keluar dari aplikasi?")
+            .setMessage("Apakah Anda yakin ingin keluar?")
             .setPositiveButton("Ya, Keluar") { _, _ ->
                 auth.signOut()
-                startActivity(Intent(requireContext(), LoginActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                })
+                startActivity(
+                    Intent(requireContext(), LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                )
             }
             .setNegativeButton("Batal") { dialog, _ -> dialog.dismiss() }
             .show()
