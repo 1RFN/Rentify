@@ -11,16 +11,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.cloudinary.android.MediaManager
+import com.cloudinary.android.callback.ErrorInfo
+import com.cloudinary.android.callback.UploadCallback
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.irfanjayadi.rentify.R
 import de.hdodenhof.circleimageview.CircleImageView
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class EditProfileActivity : AppCompatActivity() {
 
@@ -42,6 +41,14 @@ class EditProfileActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_profile)
+
+        // 1. Inisialisasi Mesin Cloudinary
+        try {
+            val config = mapOf("cloud_name" to "dalwy5um8")
+            MediaManager.init(this, config)
+        } catch (e: Exception) {
+            // Abaikan jika MediaManager sudah pernah diinisialisasi sebelumnya
+        }
 
         firestore = FirebaseFirestore.getInstance()
         auth      = FirebaseAuth.getInstance()
@@ -112,54 +119,35 @@ class EditProfileActivity : AppCompatActivity() {
             .into(ivEditPhoto)
     }
 
+    // 2. Fungsi Upload Menggunakan Cloudinary SDK
     private fun uploadImageAndSave(uri: Uri, name: String, phone: String, address: String, userId: String) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val inputStream = contentResolver.openInputStream(uri)
-                    ?: throw Exception("Tidak bisa membuka file")
-                val bytes = inputStream.readBytes()
-                inputStream.close()
-
-                // Format spesifik untuk Cloudinary
-                val base64Image = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-
-                // TODO: PASTIKAN ANDA SUDAH MENGGANTI INI DENGAN DATA DARI CLOUDINARY ANDA
-                val cloudName    = "dalwy5um8" // Contoh: "dxyz123"
-                val uploadPreset = "g1tohcnv" // Contoh: "ml_default"
-
-                val url        = java.net.URL("https://api.cloudinary.com/v1_1/$cloudName/image/upload")
-                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
-                    requestMethod  = "POST"
-                    doOutput       = true
-                    // INI BARIS YANG DITAMBAHKAN AGAR CLOUDINARY BISA MEMBACA DATANYA
-                    setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+        MediaManager.get().upload(uri)
+            .unsigned("g1tohcnv") // Gunakan preset unsigned Anda
+            .callback(object : UploadCallback {
+                override fun onStart(requestId: String) {
+                    // Proses dimulai (loading overlay sudah aktif dari btnSave)
                 }
 
-                val postData = "upload_preset=$uploadPreset&file=" + java.net.URLEncoder.encode(base64Image, "UTF-8")
-                connection.outputStream.use { it.write(postData.toByteArray(Charsets.UTF_8)) }
-
-                if (connection.responseCode == java.net.HttpURLConnection.HTTP_OK) {
-                    val response = connection.inputStream.bufferedReader().use { it.readText() }
-                    val json     = org.json.JSONObject(response)
-
-                    // Mengambil URL aman dari Cloudinary
-                    val imageUrl = json.getString("secure_url")
-
-                    withContext(Dispatchers.Main) {
-                        saveDataToFirestore(name, phone, address, imageUrl, userId)
-                    }
-                } else {
-                    // Membaca pesan error detail dari server Cloudinary jika gagal
-                    val errorResponse = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Error tidak diketahui"
-                    throw Exception("HTTP ${connection.responseCode}: $errorResponse")
+                override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {
+                    // Anda bisa menambahkan fitur loading persentase di sini nanti untuk video/foto besar
                 }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
+
+                override fun onSuccess(requestId: String, resultData: Map<*, *>) {
+                    // Ambil URL aman yang dikembalikan oleh Cloudinary
+                    val imageUrl = resultData["secure_url"] as String
+                    saveDataToFirestore(name, phone, address, imageUrl, userId)
+                }
+
+                override fun onError(requestId: String, error: ErrorInfo) {
                     loadingOverlay.visibility = View.GONE
-                    Toast.makeText(this@EditProfileActivity, "Gagal upload: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@EditProfileActivity, "Gagal upload: ${error.description}", Toast.LENGTH_LONG).show()
                 }
-            }
-        }
+
+                override fun onReschedule(requestId: String, error: ErrorInfo) {
+                    // Fungsi jika koneksi terputus dan dilanjutkan kembali
+                }
+            })
+            .dispatch() // Eksekusi perintah
     }
 
     private fun saveDataToFirestore(name: String, phone: String, address: String, photoUrl: String?, userId: String) {

@@ -12,6 +12,7 @@
         android:orientation="vertical"
         android:padding="20dp">
 
+        <!-- Card profil -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -83,6 +84,7 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
+                <!-- Tombol Edit Profil dengan efek ripple -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnEditProfile"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -94,11 +96,13 @@
                     android:text="Edit Profil"
                     android:textAllCaps="false"
                     android:textColor="@color/green_rentify"
-                    app:strokeColor="@color/green_rentify" />
+                    app:strokeColor="@color/green_rentify"
+                    app:rippleColor="@color/green_rentify" />
 
             </RelativeLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Card pilihan mode -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -121,6 +125,7 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="16dp"/>
 
+                <!-- Tombol Mode Penyewa: khusus beralih ke renter -->
                 <LinearLayout
                     android:id="@+id/btnModeRenter"
                     android:layout_width="match_parent"
@@ -129,6 +134,9 @@
                     android:orientation="vertical"
                     android:padding="16dp"
                     android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
                     android:layout_marginBottom="12dp">
                     <TextView
                         android:layout_width="wrap_content"
@@ -144,6 +152,7 @@
                         android:textColor="@color/gray_text"/>
                 </LinearLayout>
 
+                <!-- Tombol Mode Pemilik: khusus beralih ke owner -->
                 <LinearLayout
                     android:id="@+id/btnModeOwner"
                     android:layout_width="match_parent"
@@ -151,7 +160,10 @@
                     android:background="@drawable/bg_mode_unselected"
                     android:orientation="vertical"
                     android:padding="16dp"
-                    android:gravity="center">
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground">
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -168,6 +180,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Card keamanan akun -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -196,6 +209,7 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
+        <!-- Tombol logout dengan efek ripple -->
         <LinearLayout
             android:id="@+id/btnLogout"
             android:layout_width="wrap_content"
@@ -204,6 +218,9 @@
             android:gravity="center"
             android:orientation="horizontal"
             android:padding="16dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground"
             android:layout_marginBottom="32dp">
 
             <ImageView
