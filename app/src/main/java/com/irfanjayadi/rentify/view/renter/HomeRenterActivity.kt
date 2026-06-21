@@ -7,16 +7,16 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.irfanjayadi.rentify.R
 import com.irfanjayadi.rentify.view.shared.ProfileFragment
 
-
 class HomeRenterActivity : AppCompatActivity() {
+
+    private lateinit var bottomNav: BottomNavigationView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home_renter)
 
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        bottomNav = findViewById(R.id.bottom_navigation)
 
-        // Set fragment awal saat aplikasi dibuka
         if (savedInstanceState == null) {
             loadFragment(HomeFragment())
         }
@@ -26,7 +26,7 @@ class HomeRenterActivity : AppCompatActivity() {
                 R.id.nav_home -> loadFragment(HomeFragment())
                 R.id.nav_search -> loadFragment(SearchFragment()) // Nanti dikerjakan Farhan
                 R.id.nav_history -> loadFragment(HistoryFragment()) // Nanti dikerjakan Nanang
-                R.id.nav_profile -> loadFragment(ProfileFragment()) // Nanti Anda kerjakan (Role Switcher)
+                R.id.nav_profile -> loadFragment(ProfileFragment()) // Nanti Anda kerjakan
             }
             true
         }
@@ -36,5 +36,32 @@ class HomeRenterActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragment_container, fragment)
             .commit()
+    }
+
+    fun navigateToSearchWithData(keyword: String = "", category: String = "Semua") {
+        // 1. Siapkan fragment search beserta datanya
+        val searchFragment = SearchFragment()
+        val bundle = Bundle()
+        bundle.putString("keyword", keyword)
+        bundle.putString("category", category)
+        searchFragment.arguments = bundle
+
+        // 2. Load fragmentnya secara manual
+        loadFragment(searchFragment)
+
+        // 3. Ubah indikator bottom navigation agar menunjuk ke tab Search tanpa memicu listener lagi
+        bottomNav.setOnItemSelectedListener(null)
+        bottomNav.selectedItemId = R.id.nav_search
+
+        // hidupkan listener kembali
+        bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> loadFragment(HomeFragment())
+                R.id.nav_search -> loadFragment(SearchFragment())
+                R.id.nav_history -> loadFragment(HistoryFragment())
+                R.id.nav_profile -> loadFragment(ProfileFragment())
+            }
+            true
+        }
     }
 }

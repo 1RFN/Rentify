@@ -58,4 +58,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.0")
 
     implementation("com.cloudinary:cloudinary-android:2.5.0")
+
+    implementation("me.relex:circleindicator:2.1.6")
+
+    implementation("androidx.viewpager2:viewpager2:1.0.0")
 }
