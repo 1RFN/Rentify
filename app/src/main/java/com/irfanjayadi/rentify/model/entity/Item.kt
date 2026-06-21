@@ -12,5 +12,10 @@ data class Item(
     @get:PropertyName("price_per_day") @set:PropertyName("price_per_day") var pricePerDay: Double = 0.0,
     var stock: Int = 0,
     var status: String = "Tersedia",
-    var media: List<String> = emptyList()
+    var media: List<String> = emptyList(),
+
+    var rating: Float = 0f,
+    @get:PropertyName("review_count") @set:PropertyName("review_count") var reviewCount: Int = 0,
+    var created_at: Long = System.currentTimeMillis()
+
 )
