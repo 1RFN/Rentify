@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.irfanjayadi.rentify.R
@@ -24,8 +25,9 @@ class ProfileFragment : Fragment() {
     private lateinit var firestore: FirebaseFirestore
     private lateinit var tvProfileName: TextView
     private lateinit var ivProfilePicture: CircleImageView
-    private lateinit var btnModeRenter: LinearLayout
-    private lateinit var btnModeOwner: LinearLayout
+    private lateinit var tvSwitchRoleTitle: TextView
+    private lateinit var tvSwitchRoleSubtitle: TextView
+    private lateinit var switchRole: SwitchMaterial
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -37,68 +39,50 @@ class ProfileFragment : Fragment() {
         auth      = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
 
-        tvProfileName    = view.findViewById(R.id.tvProfileName)
-        ivProfilePicture = view.findViewById(R.id.ivProfilePicture)
-        btnModeRenter    = view.findViewById(R.id.btnModeRenter)
-        btnModeOwner     = view.findViewById(R.id.btnModeOwner)
+        tvProfileName       = view.findViewById(R.id.tvProfileName)
+        ivProfilePicture    = view.findViewById(R.id.ivProfilePicture)
+        tvSwitchRoleTitle   = view.findViewById(R.id.tvSwitchRoleTitle)
+        tvSwitchRoleSubtitle = view.findViewById(R.id.tvSwitchRoleSubtitle)
+        switchRole          = view.findViewById(R.id.switchRole)
 
-        val btnLogout      = view.findViewById<LinearLayout>(R.id.btnLogout)
-        val btnEditProfile = view.findViewById<View>(R.id.btnEditProfile)
-        val btnSecurity    = view.findViewById<View>(R.id.btnSecurityAccount)
+        val btnLogout         = view.findViewById<LinearLayout>(R.id.btnLogout)
+        val btnEditProfile    = view.findViewById<View>(R.id.btnEditProfile)
+        val btnEditProfileMenu = view.findViewById<View>(R.id.btnEditProfileMenu)
+        val btnSecurity       = view.findViewById<View>(R.id.btnSecurityAccount)
+        val btnSwitchRole     = view.findViewById<View>(R.id.btnSwitchRole)
 
-        // Set tampilan default ke renter SEBELUM Firestore selesai loading
-        // Ini mencegah tampilan salah saat fragment pertama dibuka
-        updateModeButtonsUI("renter")
+        updateSwitchRoleUI("renter")
 
         btnEditProfile.setOnClickListener {
             startActivity(Intent(requireContext(), EditProfileActivity::class.java))
         }
 
-        // Tombol Keamanan Akun
+        btnEditProfileMenu.setOnClickListener {
+            startActivity(Intent(requireContext(), EditProfileActivity::class.java))
+        }
+
         btnSecurity.setOnClickListener {
             startActivity(Intent(requireContext(), SecurityActivity::class.java))
         }
 
-        // Tombol Mode Penyewa â†' beralih ke renter
-        btnModeRenter.setOnClickListener {
+        btnSwitchRole.setOnClickListener {
             val userId = auth.currentUser?.uid ?: return@setOnClickListener
             firestore.collection("users").document(userId).get()
                 .addOnSuccessListener { doc ->
+                    if (!isAdded) return@addOnSuccessListener
                     val currentRole = doc.getString("role") ?: "renter"
-                    if (currentRole == "renter") {
-                        Toast.makeText(
-                            requireContext(),
-                            "Anda sudah berada di Mode Penyewa",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    } else {
-                        switchToRole(userId, "renter")
-                    }
-                }
-        }
+                    val targetRole = if (currentRole == "renter") "owner" else "renter"
 
-        // Tombol Mode Pemilik â†' beralih ke owner
-        btnModeOwner.setOnClickListener {
-            val userId = auth.currentUser?.uid ?: return@setOnClickListener
-            firestore.collection("users").document(userId).get()
-                .addOnSuccessListener { doc ->
-                    val currentRole = doc.getString("role") ?: "renter"
-                    if (currentRole == "owner") {
-                        Toast.makeText(
-                            requireContext(),
-                            "Anda sudah berada di Mode Pemilik",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    } else {
+                    if (targetRole == "owner") {
                         val name    = doc.getString("name")    ?: ""
                         val phone   = doc.getString("phone")   ?: ""
                         val address = doc.getString("address") ?: ""
                         if (name.isEmpty() || phone.isEmpty() || address.isEmpty()) {
                             showIncompleteProfileAlert()
-                        } else {
-                            switchToRole(userId, "owner")
+                            return@addOnSuccessListener
                         }
                     }
+                    switchToRole(userId, targetRole)
                 }
         }
 
@@ -123,20 +107,21 @@ class ProfileFragment : Fragment() {
                 if (photoUrl.isNotEmpty()) loadProfileImage(photoUrl)
                 else ivProfilePicture.setImageResource(R.drawable.ic_profile)
 
-                // Update tombol sesuai role yang tersimpan di Firestore
                 val role = document.getString("role") ?: "renter"
-                updateModeButtonsUI(role)
+                updateSwitchRoleUI(role)
             }
     }
 
-    private fun updateModeButtonsUI(currentRole: String) {
+    private fun updateSwitchRoleUI(currentRole: String) {
         if (!isAdded) return
         if (currentRole == "renter") {
-            btnModeRenter.setBackgroundResource(R.drawable.bg_mode_selected)
-            btnModeOwner.setBackgroundResource(R.drawable.bg_mode_unselected)
+            tvSwitchRoleTitle.text = "Ganti ke Mode Pemilik"
+            tvSwitchRoleSubtitle.text = "Kelola dan sewakan properti Anda"
+            switchRole.isChecked = false
         } else {
-            btnModeRenter.setBackgroundResource(R.drawable.bg_mode_unselected)
-            btnModeOwner.setBackgroundResource(R.drawable.bg_mode_selected)
+            tvSwitchRoleTitle.text = "Ganti ke Mode Penyewa"
+            tvSwitchRoleSubtitle.text = "Cari dan sewa barang"
+            switchRole.isChecked = true
         }
     }
 
