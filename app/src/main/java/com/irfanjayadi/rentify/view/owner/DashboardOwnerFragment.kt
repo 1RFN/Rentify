@@ -72,6 +72,14 @@ class DashboardOwnerFragment : Fragment() {
             startActivity(Intent(requireContext(), AddItemActivity::class.java))
         }
 
+        // Lihat Semua → pindah ke tab Barang Saya
+        view.findViewById<TextView>(R.id.tvSeeAll).setOnClickListener {
+            val activity = requireActivity()
+            if (activity is DashboardOwnerActivity) {
+                activity.switchToItemsTab()
+            }
+        }
+
         return view
     }
 

@@ -119,7 +119,7 @@ class EditItemActivity : AppCompatActivity() {
             finalImageUrls.clear()
             finalImageUrls.addAll(existingImageUrls) // Foto lama tetap dipakai
 
-            val price = priceStr.toIntOrNull() ?: 0
+            val price = priceStr.toDoubleOrNull() ?: 0.0
             val stock = stockStr.toIntOrNull() ?: 1
 
             if (newImageUris.isEmpty()) {
@@ -135,7 +135,7 @@ class EditItemActivity : AppCompatActivity() {
     private fun uploadNewImages(
         index: Int,
         title: String, category: String, description: String,
-        price: Int, stock: Int
+        price: Double, stock: Int
     ) {
         if (index >= newImageUris.size) {
             tvLoadingText.text = "Menyimpan perubahan..."
@@ -170,7 +170,7 @@ class EditItemActivity : AppCompatActivity() {
 
     private fun updateFirestore(
         title: String, category: String, description: String,
-        price: Int, stock: Int
+        price: Double, stock: Int
     ) {
         val updates = mapOf(
             "title"         to title,

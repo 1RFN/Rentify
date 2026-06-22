@@ -102,10 +102,9 @@ class AddItemActivity : AppCompatActivity() {
             loadingOverlay.visibility = View.VISIBLE
             uploadedImageUrls.clear()
 
-            val price = priceStr.toIntOrNull() ?: 0
+            val price = priceStr.toDoubleOrNull() ?: 0.0
             val stock = stockStr.toIntOrNull() ?: 1
 
-            // Upload semua foto satu per satu
             uploadNextImage(0, title, category, description, price, stock, ownerId)
         }
     }
@@ -116,7 +115,7 @@ class AddItemActivity : AppCompatActivity() {
     private fun uploadNextImage(
         index: Int,
         title: String, category: String, description: String,
-        price: Int, stock: Int, ownerId: String
+        price: Double, stock: Int, ownerId: String
     ) {
         if (index >= selectedImageUris.size) {
             // Semua foto selesai di-upload → simpan ke Firestore
@@ -162,7 +161,7 @@ class AddItemActivity : AppCompatActivity() {
 
     private fun saveItemToFirestore(
         title: String, category: String, description: String,
-        price: Int, stock: Int, ownerId: String, imageUrls: List<String>
+        price: Double, stock: Int, ownerId: String, imageUrls: List<String>
     ) {
         val ref = firestore.collection("items").document()
         val data = hashMapOf(
@@ -174,7 +173,8 @@ class AddItemActivity : AppCompatActivity() {
             "price_per_day" to price,
             "status"        to "Tersedia",
             "stock"         to stock,
-            "title"         to title
+            "title"         to title,
+            "created_at"    to System.currentTimeMillis()
         )
         ref.set(data)
             .addOnSuccessListener {
