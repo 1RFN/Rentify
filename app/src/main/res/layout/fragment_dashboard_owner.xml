@@ -176,6 +176,17 @@
                     android:textColor="@color/black"
                     android:textSize="16sp"
                     android:layout_centerVertical="true"/>
+
+                <TextView
+                    android:id="@+id/tvSeeAll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="Lihat Semua"
+                    android:textSize="13sp"
+                    android:textColor="@color/green_rentify"
+                    android:textStyle="bold" />
             </RelativeLayout>
 
             <TextView
