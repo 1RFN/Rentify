@@ -1,4 +1,4 @@
-﻿package com.irfanjayadi.rentify.view.shared
+package com.irfanjayadi.rentify.view.shared
 
 import android.os.Bundle
 import android.widget.ImageView

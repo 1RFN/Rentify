@@ -16,6 +16,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.irfanjayadi.rentify.R
 import com.irfanjayadi.rentify.model.entity.Item
+import com.irfanjayadi.rentify.model.entity.Transaction
+import com.irfanjayadi.rentify.view.adapter.IncomingOrderAdapter
 import com.irfanjayadi.rentify.view.adapter.ItemOwnerAdapter
 import java.text.NumberFormat
 import java.util.Locale
@@ -36,7 +38,10 @@ class DashboardOwnerFragment : Fragment() {
     private lateinit var rvMyItems: RecyclerView
 
     private lateinit var itemAdapter: ItemOwnerAdapter
+    private lateinit var orderAdapter: IncomingOrderAdapter
+
     private val itemList = mutableListOf<Item>()
+    private val orderList = mutableListOf<Transaction>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -57,7 +62,7 @@ class DashboardOwnerFragment : Fragment() {
         rvIncomingOrders      = view.findViewById(R.id.rvIncomingOrders)
         rvMyItems             = view.findViewById(R.id.rvMyItems)
 
-        // Setup RecyclerView barang
+        // Setup Adapter Barang Pemilik
         itemAdapter = ItemOwnerAdapter(
             items    = itemList,
             onEdit   = { item -> openEditItem(item) },
@@ -67,9 +72,28 @@ class DashboardOwnerFragment : Fragment() {
         rvMyItems.adapter = itemAdapter
         rvMyItems.isNestedScrollingEnabled = false
 
+        // Setup Adapter Pesanan Masuk
+        orderAdapter = IncomingOrderAdapter(
+            orders = orderList,
+            onAccept = { transaction -> updateOrderStatus(transaction, "Disewa") },
+            onReject = { transaction -> updateOrderStatus(transaction, "Ditolak") },
+            onFinish = { transaction -> updateOrderStatus(transaction, "Selesai") }
+        )
+        rvIncomingOrders.layoutManager = LinearLayoutManager(requireContext())
+        rvIncomingOrders.adapter = orderAdapter
+        rvIncomingOrders.isNestedScrollingEnabled = false
+
         // FAB tambah barang
         view.findViewById<FloatingActionButton>(R.id.fabAddItem).setOnClickListener {
             startActivity(Intent(requireContext(), AddItemActivity::class.java))
+        }
+
+        // Lihat Semua → pindah ke tab Barang Saya
+        view.findViewById<TextView>(R.id.tvSeeAll).setOnClickListener {
+            val activity = requireActivity()
+            if (activity is DashboardOwnerActivity) {
+                activity.switchToItemsTab()
+            }
         }
 
         return view
@@ -113,44 +137,73 @@ class DashboardOwnerFragment : Fragment() {
                 }
             }
 
-        // 3. Pesanan masuk (status = "pending" / "menunggu")
-        firestore.collection("orders")
+        // 3. Pesanan Masuk (Ambil semua lalu filter lokal agar bebas error Indeks Firestore)
+        firestore.collection("transactions")
             .whereEqualTo("owner_id", userId)
-            .whereEqualTo("status", "menunggu")
             .get()
             .addOnSuccessListener { snapshot ->
                 if (!isAdded) return@addOnSuccessListener
 
-                val orderCount = snapshot.size()
-                tvStatIncomingOrders.text = orderCount.toString()
+                // Ambil semua transaksi milik owner ini
+                val allTransactions = snapshot.toObjects(Transaction::class.java)
 
-                if (orderCount == 0) {
+                val activeOrders = allTransactions.filter {
+                    it.status == "Menunggu Konfirmasi"
+                }
+
+                orderAdapter.updateData(activeOrders)
+                tvStatIncomingOrders.text = activeOrders.size.toString()
+
+                if (activeOrders.isEmpty()) {
                     tvEmptyOrders.visibility = View.VISIBLE
                     rvIncomingOrders.visibility = View.GONE
                 } else {
                     tvEmptyOrders.visibility = View.GONE
                     rvIncomingOrders.visibility = View.VISIBLE
-                    // TODO: setup order adapter jika sudah dibuat
-                }
-            }
-
-        // 4. Pendapatan bulan ini (pesanan status = "selesai" bulan ini)
-        firestore.collection("orders")
-            .whereEqualTo("owner_id", userId)
-            .whereEqualTo("status", "selesai")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (!isAdded) return@addOnSuccessListener
-
-                var totalRevenue = 0.0
-                for (doc in snapshot.documents) {
-                    totalRevenue += doc.getDouble("total_price") ?: 0.0
                 }
 
-                val formatted = NumberFormat.getNumberInstance(Locale("id", "ID"))
-                    .format(totalRevenue)
+                // 4. FILTER LOKAL PENDAPATAN: Hitung hanya dari yang "Selesai"
+                val completedOrders = allTransactions.filter { it.status == "Selesai" }
+                val totalRevenue = completedOrders.sumOf { it.totalPrice }
+
+                val formatted = NumberFormat.getNumberInstance(Locale("id", "ID")).format(totalRevenue)
                 tvStatRevenue.text = "Rp $formatted"
             }
+            .addOnFailureListener { e ->
+                if (!isAdded) return@addOnFailureListener
+                Toast.makeText(requireContext(), "Gagal memuat pesanan: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun updateOrderStatus(transaction: Transaction, newStatus: String) {
+        val actionText = if (newStatus == "Disewa") "menerima" else "menolak"
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Konfirmasi")
+            .setMessage("Anda yakin ingin $actionText pesanan ini?")
+            .setPositiveButton("Ya") { _, _ ->
+                firestore.collection("transactions").document(transaction.transactionId)
+                    .update("status", newStatus)
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Pesanan berhasil $actionText", Toast.LENGTH_SHORT).show()
+
+                        // Jika diterima, ubah status barang menjadi "Disewa"
+                        if (newStatus == "Disewa") {
+                            firestore.collection("items").document(transaction.itemId).update("status", "Disewa")
+                        }
+                        // Jika selesai, kembalikan status barang menjadi "Tersedia"
+                        else if (newStatus == "Selesai") {
+                            firestore.collection("items").document(transaction.itemId).update("status", "Tersedia")
+                        }
+
+                        loadDashboardData() // Refresh data
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(context, "Gagal mengubah status pesanan", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
     }
 
     private fun openEditItem(item: Item) {

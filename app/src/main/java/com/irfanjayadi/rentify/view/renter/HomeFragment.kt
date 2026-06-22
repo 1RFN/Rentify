@@ -15,6 +15,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.irfanjayadi.rentify.R
 import com.irfanjayadi.rentify.model.entity.Item
+import com.irfanjayadi.rentify.view.adapter.CategoryAdapter
 import com.irfanjayadi.rentify.view.adapter.ItemRenterAdapter
 
 class HomeFragment : Fragment() {
@@ -56,45 +57,15 @@ class HomeFragment : Fragment() {
         }
 
         val rvCategories = view.findViewById<RecyclerView>(R.id.rvCategories)
-        val tvEmptyCategory = view.findViewById<TextView>(R.id.tvEmptyCategory)
 
-        // Inisialisasi adapter dengan list kosong terlebih dahulu
-        val homeCategoryAdapter = com.irfanjayadi.rentify.view.adapter.CategoryAdapter(emptyList(), "") { selectedCategory ->
+        val defaultCategories = listOf("Semua", "Motor", "Mobil", "Kamera", "Sepeda", "Console", "Alat Camping")
+        val homeCategoryAdapter = CategoryAdapter(defaultCategories, "Semua") { selectedCategory ->
             (activity as? HomeRenterActivity)?.navigateToSearchWithData(category = selectedCategory)
         }
 
         rvCategories.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         rvCategories.adapter = homeCategoryAdapter
-
-        // FUNGSI BARU: Tarik data kategori dari Firestore
-        firestore.collection("categories")
-            // .orderBy("name", Query.Direction.ASCENDING) // Opsional: jika ingin urut abjad
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (!isAdded) return@addOnSuccessListener
-
-                // Siapkan list, otomatis tambahkan "Semua" di pilihan paling awal
-                val categoryList = mutableListOf("Semua")
-                for (doc in snapshot) {
-                    doc.getString("name")?.let { categoryList.add(it) }
-                }
-
-                homeCategoryAdapter.updateData(categoryList)
-
-                if (categoryList.size <= 1) { // Hanya ada "Semua"
-                    rvCategories.visibility = View.GONE
-                    tvEmptyCategory?.visibility = View.VISIBLE
-                } else {
-                    rvCategories.visibility = View.VISIBLE
-                    tvEmptyCategory?.visibility = View.GONE
-                }
-            }
-
-        rvCategories.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-        rvCategories.adapter = homeCategoryAdapter
-
         rvCategories.visibility = View.VISIBLE
-        tvEmptyCategory?.visibility = View.GONE
 
         rvItems.layoutManager = LinearLayoutManager(requireContext())
         rvItems.adapter = itemAdapter

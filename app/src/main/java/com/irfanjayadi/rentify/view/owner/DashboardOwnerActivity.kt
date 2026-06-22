@@ -10,11 +10,13 @@ import com.irfanjayadi.rentify.view.shared.ProfileFragment
 
 class DashboardOwnerActivity : AppCompatActivity() {
 
+    private lateinit var bottomNav: BottomNavigationView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dashboard_owner)
 
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation_owner)
+        bottomNav = findViewById(R.id.bottom_navigation_owner)
 
         // Set fragment awal ke Dashboard saat aplikasi dibuka
         if (savedInstanceState == null) {
@@ -25,14 +27,17 @@ class DashboardOwnerActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.nav_owner_dashboard -> loadFragment(DashboardOwnerFragment())
 
-                // Dua menu di bawah ini biarkan di-comment dulu sampai Anda atau tim membuatnya
-                // R.id.nav_owner_items -> loadFragment(MyItemsFragment())
-                // R.id.nav_owner_orders -> loadFragment(IncomingOrdersFragment())
+                R.id.nav_owner_items -> loadFragment(SearchItem())
+                R.id.nav_owner_orders -> loadFragment(Pesanan())
 
                 R.id.nav_owner_profile -> loadFragment(ProfileFragment())
             }
             true
         }
+    }
+
+    fun switchToItemsTab() {
+        bottomNav.selectedItemId = R.id.nav_owner_items
     }
 
     private fun loadFragment(fragment: Fragment) {
