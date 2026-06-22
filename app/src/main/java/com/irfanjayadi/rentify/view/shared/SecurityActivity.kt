@@ -111,16 +111,16 @@ class SecurityActivity : AppCompatActivity() {
                             "Password berhasil diubah!",
                             Toast.LENGTH_SHORT
                         ).show()
-
+                        
                         // Clear input fields
                         etCurrentPassword.text?.clear()
                         etNewPassword.text?.clear()
                         etConfirmPassword.text?.clear()
-
+                        
                         // Enable button
                         btnChangePassword.isEnabled = true
                         btnChangePassword.text = "Ubah Password"
-
+                        
                         // Kembali ke profile
                         finish()
                     }
