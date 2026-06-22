@@ -74,21 +74,13 @@ class OrderOwnerAdapter(
         }
         holder.tvStatus.text = statusDisplay
 
-        val statusBg = when (status) {
-            "menunggu" -> R.drawable.bg_circle_yellow
-            "disewa" -> R.drawable.bg_circle_yellow
-            "selesai" -> R.drawable.bg_location_chip
-            "ditolak" -> R.drawable.bg_mode_unselected
-            else -> R.drawable.bg_circle_white
-        }
         val statusColor = when (status) {
-            "menunggu" -> ContextCompat.getColor(holder.itemView.context, R.color.black)
+            "menunggu" -> android.graphics.Color.parseColor("#FFC107")
             "disewa" -> ContextCompat.getColor(holder.itemView.context, R.color.green_rentify)
             "selesai" -> ContextCompat.getColor(holder.itemView.context, R.color.gray_text)
             "ditolak" -> ContextCompat.getColor(holder.itemView.context, R.color.red_rentify)
             else -> ContextCompat.getColor(holder.itemView.context, R.color.black)
         }
-        holder.tvStatus.setBackgroundResource(statusBg)
         holder.tvStatus.setTextColor(statusColor)
 
         // Item image
