@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="green_rentify">#116D41</color>
+    <color name="bg_rentify">#F5F9F5</color>
+    <color name="gray_text">#808080</color>
+    <color name="red_rentify">#E53935</color>
+</resources>

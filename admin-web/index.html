@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rentify — Admin Panel</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <div id="login-screen">
+    <div class="login-card">
+      <img src="logo_rentify.png" alt="Logo Rentify" style="width:52px;height:52px;object-fit:contain;margin:0 auto 16px;display:block">
+      <h1>Rentify Admin</h1>
+      <p>Masuk ke panel kontrol admin</p>
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" placeholder="admin@rentify.com">
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" placeholder="••••••••">
+      </div>
+      <button class="btn-primary" id="login-submit-btn">Masuk</button>
+      <p class="login-error" id="login-error"></p>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal">
+      <h3 id="modal-title">Konfirmasi</h3>
+      <p class="modal-sub" id="modal-body"></p>
+      <div class="modal-actions">
+        <button class="btn" id="modal-cancel-btn">Batal</button>
+        <button class="btn btn-danger" id="modal-confirm-btn">Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <img src="logo_rentify.png" alt="Logo" style="width:34px;height:34px;object-fit:contain;border-radius:8px">
+        <div>
+          <span>Rentify</span>
+          <small>Admin Panel</small>
+        </div>
+      </div>
+      <nav id="sidebar-nav">
+        <div class="nav-section">Menu</div>
+        <button class="nav-item active" data-page="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" data-page="users">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Pengguna
+        </button>
+        <button class="nav-item" data-page="items">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Barang
+        </button>
+        <button class="nav-item" data-page="transactions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Transaksi
+        </button>
+        <button class="nav-item" data-page="categories">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+          Kategori
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="admin-badge">
+          <div class="dot"></div>
+          <span id="admin-email-display">admin</span>
+        </div>
+        <button id="logout-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Keluar
+        </button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="topbar">
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+        <div class="topbar-right">
+          <span class="badge-admin">Admin</span>
+        </div>
+      </div>
+      <div class="content">
+
+        <div class="page active" id="page-dashboard">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <div class="stat-label">Total Pengguna</div>
+              <div class="stat-value" id="stat-users">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon gold">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              </div>
+              <div class="stat-label">Total Barang</div>
+              <div class="stat-value" id="stat-items">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div class="stat-label">Total Transaksi</div>
+              <div class="stat-value" id="stat-txn">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon red">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <div class="stat-label">Menunggu Konfirmasi</div>
+              <div class="stat-value" id="stat-pending">—</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="card">
+              <div class="card-header"><span class="card-title">Pengguna Terbaru</span></div>
+              <div class="card-body" id="dash-recent-users"><div class="loading"><span class="spinner"></span>Memuat...</div></div>
+            </div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">Transaksi Terbaru</span></div>
+              <div class="card-body" id="dash-recent-txn"><div class="loading"><span class="spinner"></span>Memuat...</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="page" id="page-users">
+          <div class="search-bar">
+            <input class="search-input" id="user-search" placeholder="Cari nama atau email...">
+            <select class="filter-select" id="user-role-filter">
+              <option value="">Semua Role</option>
+              <option value="renter">Renter</option>
+              <option value="owner">Owner</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Manajemen Pengguna</span>
+              <span id="user-count" class="badge badge-gray">0 pengguna</span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>Pengguna</th><th>No. HP</th><th>Role</th><th>Alamat</th><th>Aksi</th></tr></thead>
+                <tbody id="users-tbody"><tr><td colspan="5"><div class="loading"><span class="spinner"></span>Memuat data...</div></td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="page" id="page-items">
+          <div class="search-bar">
+            <input class="search-input" id="item-search" placeholder="Cari nama barang...">
+            <select class="filter-select" id="item-status-filter">
+              <option value="">Semua Status</option>
+              <option value="Tersedia">Tersedia</option>
+              <option value="Disewa">Disewa</option>
+            </select>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Moderasi Barang</span>
+              <span id="item-count" class="badge badge-gray">0 barang</span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>Barang</th><th>Kategori</th><th>Harga/Hari</th><th>Stok</th><th>Status</th><th>Aksi</th></tr></thead>
+                <tbody id="items-tbody"><tr><td colspan="6"><div class="loading"><span class="spinner"></span>Memuat data...</div></td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="page" id="page-transactions">
+          <div class="search-bar">
+            <select class="filter-select" id="txn-status-filter">
+              <option value="">Semua Status</option>
+              <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
+              <option value="Disewa">Disewa</option>
+              <option value="Selesai">Selesai</option>
+            </select>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Monitoring Transaksi</span>
+              <span id="txn-count" class="badge badge-gray">0 transaksi</span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>ID Transaksi</th><th>Item</th><th>Renter ID</th><th>Periode</th><th>Total</th><th>Status</th></tr></thead>
+                <tbody id="txns-tbody"><tr><td colspan="6"><div class="loading"><span class="spinner"></span>Memuat data...</div></td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="page" id="page-categories">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Manajemen Kategori</span>
+            </div>
+            <div class="card-body" style="padding:16px 18px">
+              <div class="cat-form">
+                <input id="new-category-input" placeholder="Nama kategori baru (contoh: Kamera)">
+                <button class="btn btn-success" id="add-category-btn">+ Tambah</button>
+              </div>
+              <div id="categories-list"><div class="loading"><span class="spinner"></span>Memuat kategori...</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Kategori dari Data Barang</span></div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>Nama Kategori</th><th>Jumlah Barang</th></tr></thead>
+                <tbody id="cat-stats-tbody"><tr><td colspan="2"><div class="loading"><span class="spinner"></span>Memuat...</div></td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
