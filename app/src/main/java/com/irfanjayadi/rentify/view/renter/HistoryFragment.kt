@@ -1,5 +1,6 @@
 package com.irfanjayadi.rentify.view.renter
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -39,8 +40,9 @@ class HistoryFragment : Fragment() {
         layoutEmptyHistory = view.findViewById(R.id.layoutEmptyHistory)
 
         historyAdapter = HistoryOrderAdapter(transactionList) { transaction ->
-            // Nanti kita arahkan ke halaman AddReviewActivity
-            Toast.makeText(context, "Fitur Ulasan segera dibuat!", Toast.LENGTH_SHORT).show()
+            val intent = Intent(requireContext(), AddReviewActivity::class.java)
+            intent.putExtra("item_id", transaction.itemId)
+            startActivity(intent)
         }
 
         rvHistory.layoutManager = LinearLayoutManager(requireContext())

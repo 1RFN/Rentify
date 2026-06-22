@@ -118,6 +118,16 @@
                 android:textColor="@color/white"
                 app:backgroundTint="@color/green_rentify"
                 android:layout_marginStart="8dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFinishOrder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Selesaikan Pesanan"
+                android:textColor="@color/white"
+                app:backgroundTint="#2196F3"
+                android:visibility="gone"/>
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>
