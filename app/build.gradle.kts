@@ -62,4 +62,7 @@ dependencies {
     implementation("me.relex:circleindicator:2.1.6")
 
     implementation("androidx.viewpager2:viewpager2:1.0.0")
+
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    implementation("com.google.firebase:firebase-auth:22.3.0")
 }

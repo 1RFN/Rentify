@@ -1,4 +1,4 @@
-package com.irfanjayadi.rentify.view.shared
+﻿package com.irfanjayadi.rentify.view.shared
 
 import android.app.AlertDialog
 import android.content.Intent
@@ -44,6 +44,7 @@ class ProfileFragment : Fragment() {
 
         val btnLogout      = view.findViewById<LinearLayout>(R.id.btnLogout)
         val btnEditProfile = view.findViewById<View>(R.id.btnEditProfile)
+        val btnSecurity    = view.findViewById<View>(R.id.btnSecurityAccount)
 
         // Set tampilan default ke renter SEBELUM Firestore selesai loading
         // Ini mencegah tampilan salah saat fragment pertama dibuka
@@ -53,7 +54,12 @@ class ProfileFragment : Fragment() {
             startActivity(Intent(requireContext(), EditProfileActivity::class.java))
         }
 
-        // Tombol Mode Penyewa → beralih ke renter
+        // Tombol Keamanan Akun
+        btnSecurity.setOnClickListener {
+            startActivity(Intent(requireContext(), SecurityActivity::class.java))
+        }
+
+        // Tombol Mode Penyewa â†' beralih ke renter
         btnModeRenter.setOnClickListener {
             val userId = auth.currentUser?.uid ?: return@setOnClickListener
             firestore.collection("users").document(userId).get()
@@ -71,7 +77,7 @@ class ProfileFragment : Fragment() {
                 }
         }
 
-        // Tombol Mode Pemilik → beralih ke owner
+        // Tombol Mode Pemilik â†' beralih ke owner
         btnModeOwner.setOnClickListener {
             val userId = auth.currentUser?.uid ?: return@setOnClickListener
             firestore.collection("users").document(userId).get()

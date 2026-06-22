@@ -16,6 +16,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.irfanjayadi.rentify.R
 import com.irfanjayadi.rentify.model.entity.Item
+import com.irfanjayadi.rentify.model.entity.Transaction
+import com.irfanjayadi.rentify.view.adapter.IncomingOrderAdapter
 import com.irfanjayadi.rentify.view.adapter.ItemOwnerAdapter
 import java.text.NumberFormat
 import java.util.Locale
@@ -36,7 +38,10 @@ class DashboardOwnerFragment : Fragment() {
     private lateinit var rvMyItems: RecyclerView
 
     private lateinit var itemAdapter: ItemOwnerAdapter
+    private lateinit var orderAdapter: IncomingOrderAdapter
+
     private val itemList = mutableListOf<Item>()
+    private val orderList = mutableListOf<Transaction>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -57,7 +62,7 @@ class DashboardOwnerFragment : Fragment() {
         rvIncomingOrders      = view.findViewById(R.id.rvIncomingOrders)
         rvMyItems             = view.findViewById(R.id.rvMyItems)
 
-        // Setup RecyclerView barang
+        // Setup Adapter Barang Pemilik
         itemAdapter = ItemOwnerAdapter(
             items    = itemList,
             onEdit   = { item -> openEditItem(item) },
@@ -66,6 +71,17 @@ class DashboardOwnerFragment : Fragment() {
         rvMyItems.layoutManager = LinearLayoutManager(requireContext())
         rvMyItems.adapter = itemAdapter
         rvMyItems.isNestedScrollingEnabled = false
+
+        // Setup Adapter Pesanan Masuk
+        orderAdapter = IncomingOrderAdapter(
+            orders = orderList,
+            onAccept = { transaction -> updateOrderStatus(transaction, "Disewa") },
+            onReject = { transaction -> updateOrderStatus(transaction, "Ditolak") },
+            onFinish = { transaction -> updateOrderStatus(transaction, "Selesai") }
+        )
+        rvIncomingOrders.layoutManager = LinearLayoutManager(requireContext())
+        rvIncomingOrders.adapter = orderAdapter
+        rvIncomingOrders.isNestedScrollingEnabled = false
 
         // FAB tambah barang
         view.findViewById<FloatingActionButton>(R.id.fabAddItem).setOnClickListener {
@@ -121,31 +137,31 @@ class DashboardOwnerFragment : Fragment() {
                 }
             }
 
-        // 3. Pesanan masuk (status = "pending" / "menunggu")
-        firestore.collection("orders")
+        // 3. Pesanan masuk (menggunakan tabel "transactions")
+        firestore.collection("transactions")
             .whereEqualTo("owner_id", userId)
-            .whereEqualTo("status", "menunggu")
+            .whereEqualTo("status", "Menunggu Konfirmasi, Disewa")
             .get()
             .addOnSuccessListener { snapshot ->
                 if (!isAdded) return@addOnSuccessListener
 
-                val orderCount = snapshot.size()
-                tvStatIncomingOrders.text = orderCount.toString()
+                val orders = snapshot.toObjects(Transaction::class.java)
+                orderAdapter.updateData(orders)
+                tvStatIncomingOrders.text = orders.size.toString()
 
-                if (orderCount == 0) {
+                if (orders.isEmpty()) {
                     tvEmptyOrders.visibility = View.VISIBLE
                     rvIncomingOrders.visibility = View.GONE
                 } else {
                     tvEmptyOrders.visibility = View.GONE
                     rvIncomingOrders.visibility = View.VISIBLE
-                    // TODO: setup order adapter jika sudah dibuat
                 }
             }
 
-        // 4. Pendapatan bulan ini (pesanan status = "selesai" bulan ini)
-        firestore.collection("orders")
+        // 4. Pendapatan (Status "Selesai")
+        firestore.collection("transactions")
             .whereEqualTo("owner_id", userId)
-            .whereEqualTo("status", "selesai")
+            .whereEqualTo("status", "Selesai")
             .get()
             .addOnSuccessListener { snapshot ->
                 if (!isAdded) return@addOnSuccessListener
@@ -155,10 +171,40 @@ class DashboardOwnerFragment : Fragment() {
                     totalRevenue += doc.getDouble("total_price") ?: 0.0
                 }
 
-                val formatted = NumberFormat.getNumberInstance(Locale("id", "ID"))
-                    .format(totalRevenue)
+                val formatted = NumberFormat.getNumberInstance(Locale("id", "ID")).format(totalRevenue)
                 tvStatRevenue.text = "Rp $formatted"
             }
+    }
+
+    private fun updateOrderStatus(transaction: Transaction, newStatus: String) {
+        val actionText = if (newStatus == "Disewa") "menerima" else "menolak"
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Konfirmasi")
+            .setMessage("Anda yakin ingin $actionText pesanan ini?")
+            .setPositiveButton("Ya") { _, _ ->
+                firestore.collection("transactions").document(transaction.transactionId)
+                    .update("status", newStatus)
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Pesanan berhasil $actionText", Toast.LENGTH_SHORT).show()
+
+                        // Jika diterima, ubah status barang menjadi "Disewa"
+                        if (newStatus == "Disewa") {
+                            firestore.collection("items").document(transaction.itemId).update("status", "Disewa")
+                        }
+                        // Jika selesai, kembalikan status barang menjadi "Tersedia"
+                        else if (newStatus == "Selesai") {
+                            firestore.collection("items").document(transaction.itemId).update("status", "Tersedia")
+                        }
+
+                        loadDashboardData() // Refresh data
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(context, "Gagal mengubah status pesanan", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
     }
 
     private fun openEditItem(item: Item) {
