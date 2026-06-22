@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_rentify">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/white"
+        android:elevation="4dp"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@drawable/bg_search_bar"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_search"
+                app:tint="@color/gray_text" />
+
+            <EditText
+                android:id="@+id/etSearchItem"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="12dp"
+                android:background="@null"
+                android:hint="Cari barang saya..."
+                android:textSize="14sp"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:maxLines="1" />
+
+            <ImageView
+                android:id="@+id/ivClearSearch"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                app:tint="@color/gray_text"
+                android:visibility="gone"
+                tools:visibility="visible" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Kategori"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="6dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvItemCategories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            android:clipToPadding="false" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="12dp">
+
+        <TextView
+            android:id="@+id/tvItemCount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="0 barang"
+            android:textSize="13sp"
+            android:textColor="@color/gray_text" />
+
+        <TextView
+            android:id="@+id/tvSortLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Terbaru"
+            android:textSize="13sp"
+            android:textColor="@color/green_rentify"
+            android:textStyle="bold"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
+            android:background="@drawable/bg_mode_unselected" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingHorizontal="20dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvSearchItemResults"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="visible"
+            tools:listitem="@layout/item_owner_card" />
+
+        <LinearLayout
+            android:id="@+id/layoutEmptyItems"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:paddingVertical="48dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/ic_search"
+                app:tint="#D6D6D6"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Belum ada barang"
+                android:textColor="@color/black"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tekan tombol + untuk menambahkan barang baru."
+                android:textColor="@color/gray_text"
+                android:textAlignment="center"
+                android:textSize="13sp"
+                android:paddingHorizontal="32dp" />
+        </LinearLayout>
+
+    </FrameLayout>
+</LinearLayout>
