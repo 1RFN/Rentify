@@ -54,6 +54,10 @@
         <activity
             android:name=".view.renter.ItemDetailActivity"
             android:exported="false"/>
+        
+        <activity
+            android:name=".view.renter.AddReviewActivity"
+            android:exported="false"/>
     </application>
 
 </manifest>

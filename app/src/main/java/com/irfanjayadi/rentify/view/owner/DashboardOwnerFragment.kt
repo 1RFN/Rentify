@@ -76,7 +76,8 @@ class DashboardOwnerFragment : Fragment() {
         orderAdapter = IncomingOrderAdapter(
             orders = orderList,
             onAccept = { transaction -> updateOrderStatus(transaction, "Disewa") },
-            onReject = { transaction -> updateOrderStatus(transaction, "Ditolak") }
+            onReject = { transaction -> updateOrderStatus(transaction, "Ditolak") },
+            onFinish = { transaction -> updateOrderStatus(transaction, "Selesai") }
         )
         rvIncomingOrders.layoutManager = LinearLayoutManager(requireContext())
         rvIncomingOrders.adapter = orderAdapter
@@ -131,7 +132,7 @@ class DashboardOwnerFragment : Fragment() {
         // 3. Pesanan masuk (menggunakan tabel "transactions")
         firestore.collection("transactions")
             .whereEqualTo("owner_id", userId)
-            .whereEqualTo("status", "Menunggu Konfirmasi")
+            .whereEqualTo("status", "Menunggu Konfirmasi, Disewa")
             .get()
             .addOnSuccessListener { snapshot ->
                 if (!isAdded) return@addOnSuccessListener
@@ -179,10 +180,13 @@ class DashboardOwnerFragment : Fragment() {
                     .addOnSuccessListener {
                         Toast.makeText(context, "Pesanan berhasil $actionText", Toast.LENGTH_SHORT).show()
 
-                        // Jika diterima, ubah juga status barang menjadi "Disewa"
+                        // Jika diterima, ubah status barang menjadi "Disewa"
                         if (newStatus == "Disewa") {
-                            firestore.collection("items").document(transaction.itemId)
-                                .update("status", "Disewa")
+                            firestore.collection("items").document(transaction.itemId).update("status", "Disewa")
+                        }
+                        // Jika selesai, kembalikan status barang menjadi "Tersedia"
+                        else if (newStatus == "Selesai") {
+                            firestore.collection("items").document(transaction.itemId).update("status", "Tersedia")
                         }
 
                         loadDashboardData() // Refresh data
