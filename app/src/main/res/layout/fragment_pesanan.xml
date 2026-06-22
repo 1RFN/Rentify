@@ -47,6 +47,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:paddingHorizontal="20dp"
+            android:paddingTop="10dp"
             android:paddingBottom="12dp"
             android:gravity="center_vertical">
 
@@ -55,10 +56,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Semua"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="6dp"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="8dp"
                 android:background="@drawable/bg_mode_selected"
                 android:textColor="@color/white"
                 android:layout_marginEnd="8dp" />
@@ -67,24 +68,24 @@
                 android:id="@+id/chipMenunggu"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Menunggu"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="6dp"
+                android:layout_marginEnd="8dp"
                 android:background="@drawable/bg_mode_unselected"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="8dp"
+                android:text="Menunggu"
                 android:textColor="@color/black"
-                android:layout_marginEnd="8dp" />
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/chipDisewa"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Disewa"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="6dp"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="8dp"
                 android:background="@drawable/bg_mode_unselected"
                 android:textColor="@color/black"
                 android:layout_marginEnd="8dp" />
@@ -94,10 +95,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Selesai"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="6dp"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="8dp"
                 android:background="@drawable/bg_mode_unselected"
                 android:textColor="@color/black"
                 android:layout_marginEnd="8dp" />
@@ -107,10 +108,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Ditolak"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="6dp"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="8dp"
                 android:background="@drawable/bg_mode_unselected"
                 android:textColor="@color/black" />
         </LinearLayout>
@@ -121,7 +122,6 @@
         android:layout_height="match_parent"
         android:paddingHorizontal="20dp"
         android:paddingTop="12dp">
-
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvOrders"
             android:layout_width="match_parent"

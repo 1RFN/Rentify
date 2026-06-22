@@ -75,23 +75,13 @@ class SearchItem : Fragment() {
     }
 
     private fun setupCategoryFilter() {
-        val initial = mutableListOf("Semua")
-        categoryAdapter = CategoryAdapter(initial, currentCategory) { category ->
+        val defaultCategories = listOf("Semua", "Motor", "Mobil", "Kamera", "Sepeda", "Console", "Alat Camping", "Lainnya")
+        categoryAdapter = CategoryAdapter(defaultCategories, currentCategory) { category ->
             currentCategory = category
             applyFilters()
         }
         rvItemCategories.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         rvItemCategories.adapter = categoryAdapter
-
-        firestore.collection("categories").get()
-            .addOnSuccessListener { snapshot ->
-                if (!isAdded) return@addOnSuccessListener
-                val list = mutableListOf("Semua")
-                for (doc in snapshot) {
-                    doc.getString("name")?.let { list.add(it) }
-                }
-                categoryAdapter.updateData(list)
-            }
     }
 
     private fun setupItemList() {

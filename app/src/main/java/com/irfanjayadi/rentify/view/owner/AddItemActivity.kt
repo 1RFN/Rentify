@@ -63,13 +63,11 @@ class AddItemActivity : AppCompatActivity() {
         val etStock       = findViewById<TextInputEditText>(R.id.etStock)
         val etCategory    = findViewById<com.google.android.material.textfield.MaterialAutoCompleteTextView>(R.id.etCategoryDropdown)
 
-        // Load kategori dari Firestore
-        firestore.collection("categories").get().addOnSuccessListener { snapshot ->
-            val list = snapshot.documents.map { it.getString("name") ?: "" }
-            etCategory.setAdapter(
-                ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, list)
-            )
-        }
+        // Kategori statis
+        val categoryList = listOf("Motor", "Mobil", "Kamera", "Sepeda", "Console", "Alat Camping", "Lainnya")
+        etCategory.setAdapter(
+            ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, categoryList)
+        )
 
         // Tombol pilih foto (bisa lebih dari 1)
         findViewById<MaterialButton>(R.id.btnPickPhoto).setOnClickListener {

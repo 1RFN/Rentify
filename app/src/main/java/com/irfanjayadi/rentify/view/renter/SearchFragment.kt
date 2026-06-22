@@ -19,7 +19,6 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.firestore.FirebaseFirestore
 import com.irfanjayadi.rentify.R
 import com.irfanjayadi.rentify.model.entity.Item
 import com.irfanjayadi.rentify.presenter.SearchPresenter
@@ -97,25 +96,13 @@ class SearchFragment : Fragment(), SearchContract.View {
 
         // Setup Kategori
         val rvSearchCategories = view.findViewById<RecyclerView>(R.id.rvSearchCategories)
-        val initialCategories = mutableListOf("Semua")
-        categoryAdapter = CategoryAdapter(initialCategories, currentCategory) { selectedCategory ->
+        val defaultCategories = listOf("Semua", "Motor", "Mobil", "Kamera", "Sepeda", "Console", "Alat Camping")
+        categoryAdapter = CategoryAdapter(defaultCategories, currentCategory) { selectedCategory ->
             currentCategory = selectedCategory
             performSearch()
         }
         rvSearchCategories.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         rvSearchCategories.adapter = categoryAdapter
-
-        // Tarik Kategori dari Firestore
-        FirebaseFirestore.getInstance().collection("categories")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (!isAdded) return@addOnSuccessListener
-                val categoryList = mutableListOf("Semua")
-                for (doc in snapshot) {
-                    doc.getString("name")?.let { categoryList.add(it) }
-                }
-                categoryAdapter.updateData(categoryList)
-            }
     }
 
     private fun setupAdapters() {
