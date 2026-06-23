@@ -69,6 +69,11 @@ class AddReviewActivity : AppCompatActivity() {
 
                 // Simpan ulasan ke tabel "reviews"
                 reviewRef.set(reviewData).addOnSuccessListener {
+                    val txId = intent.getStringExtra("transaction_id")
+                    if (!txId.isNullOrEmpty()) {
+                        firestore.collection("transactions").document(txId).update("is_reviewed", true)
+                    }
+
                     updateItemRating(itemId, rating)
                 }.addOnFailureListener {
                     btn.isEnabled = true
