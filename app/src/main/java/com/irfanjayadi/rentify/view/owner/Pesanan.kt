@@ -96,7 +96,6 @@ class Pesanan : Fragment() {
             orders = mutableListOf(),
             onAccept = { tx -> updateOrderStatus(tx, "Disewa") },
             onReject = { tx -> updateOrderStatus(tx, "Ditolak") },
-            // Asumsi di OrderOwnerAdapter nanti ada callback ke-3 untuk Selesai
             onFinish = { tx -> updateOrderStatus(tx, "Selesai") }
         )
         rvOrders.layoutManager = LinearLayoutManager(requireContext())
@@ -106,7 +105,6 @@ class Pesanan : Fragment() {
     private fun loadOrders() {
         val userId = auth.currentUser?.uid ?: return
 
-        // PERBAIKAN 1: Menggunakan tabel "transactions"
         firestore.collection("transactions")
             .whereEqualTo("owner_id", userId)
             .get()
@@ -123,14 +121,12 @@ class Pesanan : Fragment() {
                     return@addOnSuccessListener
                 }
 
-                // FITUR OTOMATIS: Cek jika waktu sewa sudah habis (Selesai Otomatis)
                 val nowSeconds = Timestamp.now().seconds
                 for (tx in transactions) {
                     if (tx.status.equals("Disewa", true) && tx.endDate != null) {
                         if (tx.endDate!!.seconds < nowSeconds) {
-                            // Waktu habis, update database secara background
-                            updateOrderStatus(tx, "Selesai")
-                            tx.status = "Selesai" // Update UI lokal sementara
+                            updateOrderStatus(tx, "Selesai", isAutoFinish = true)
+                            tx.status = "Selesai"
                         }
                     }
                 }
@@ -191,7 +187,6 @@ class Pesanan : Fragment() {
             allOrders.toList()
         } else {
             allOrders.filter {
-                // PERBAIKAN: Gunakan .contains dan ignoreCase agar kebal salah ketik/huruf besar
                 val status = it.transaction.status
                 when (currentFilter) {
                     "menunggu" -> status.contains("menunggu", ignoreCase = true)
@@ -219,39 +214,64 @@ class Pesanan : Fragment() {
         layoutEmptyOrders.visibility = View.VISIBLE
     }
 
-    private fun updateOrderStatus(tx: Transaction, newStatus: String) {
-        // PERBAIKAN 3: Memperbaiki logika update dan penambahan/pengurangan stok
+    private fun updateOrderStatus(tx: Transaction, newStatus: String, isAutoFinish: Boolean = false) {
+        // PERBAIKAN: Menggunakan referensi ke "transactions"
         firestore.collection("transactions").document(tx.transactionId)
             .update("status", newStatus)
             .addOnSuccessListener {
                 if (!isAdded) return@addOnSuccessListener
 
-                // Jangan munculkan Toast jika ini Selesai Otomatis (dipicu oleh sistem)
-                if (newStatus != "Selesai") {
-                    val msg = if (newStatus == "Disewa") "Pesanan diterima" else "Pesanan ditolak"
+                if (!isAutoFinish) {
+                    val msg = when (newStatus) {
+                        "Disewa" -> "Pesanan diterima"
+                        "Ditolak" -> "Pesanan ditolak"
+                        "Selesai" -> "Pesanan diselesaikan"
+                        else -> "Status diperbarui"
+                    }
                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 }
 
+                // Notifikasi Statis (Anti-ganda)
+                val notifRef = firestore.collection("notifications").document("notif_${tx.transactionId}_${newStatus}")
+                val title = if (newStatus == "Disewa") "Pesanan Diterima! 🎉"
+                else if (newStatus == "Ditolak") "Pesanan Ditolak 😔"
+                else "Pesanan Selesai ✅"
+
+                val message = if (newStatus == "Disewa") "Hore! Pemilik telah menyetujui pesananmu. Segera hubungi pemilik."
+                else if (newStatus == "Ditolak") "Maaf, pemilik menolak pesananmu untuk saat ini."
+                else "Pesanan telah selesai. Yuk beri ulasan untuk pengalamanmu!"
+
+                val type = if (newStatus == "Selesai") "MINTA_ULASAN" else "STATUS_UPDATE"
+
+                val notification = com.irfanjayadi.rentify.model.entity.Notification(
+                    notificationId = notifRef.id,
+                    userId = tx.renterId,
+                    title = title,
+                    massage = message,
+                    type = type
+                )
+                notifRef.set(notification)
+
                 val itemRef = firestore.collection("items").document(tx.itemId)
 
+                // Mencegah error NotFound jika barang sudah dihapus
                 firestore.runTransaction { transaction ->
                     val snapshot = transaction.get(itemRef)
-                    val currentStock = snapshot.getLong("stock")?.toInt() ?: 0
+                    if (snapshot.exists()) {
+                        val currentStock = snapshot.getLong("stock")?.toInt() ?: 0
 
-                    if (newStatus == "Disewa") {
-                        // Jika diterima, kurangi stok
-                        val newStock = if (currentStock > 0) currentStock - 1 else 0
-                        transaction.update(itemRef, "stock", newStock)
-                        if (newStock == 0) transaction.update(itemRef, "status", "Disewa")
-                    } else if (newStatus == "Selesai") {
-                        // Jika selesai, kembalikan stok
-                        val newStock = currentStock + 1
-                        transaction.update(itemRef, "stock", newStock)
-                        transaction.update(itemRef, "status", "Tersedia")
+                        if (newStatus == "Disewa") {
+                            val newStock = if (currentStock > 0) currentStock - 1 else 0
+                            transaction.update(itemRef, "stock", newStock)
+                            if (newStock == 0) transaction.update(itemRef, "status", "Disewa")
+                        } else if (newStatus == "Selesai") {
+                            val newStock = currentStock + 1
+                            transaction.update(itemRef, "stock", newStock)
+                            transaction.update(itemRef, "status", "Tersedia")
+                        }
                     }
                 }.addOnSuccessListener {
-                    // Hanya reload jika perubahannya manual (bukan dari fungsi loop otomatis di atas)
-                    if(newStatus != "Selesai") loadOrders()
+                    if (!isAutoFinish) loadOrders()
                 }
             }
             .addOnFailureListener { e ->
