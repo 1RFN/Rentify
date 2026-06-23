@@ -15,6 +15,7 @@ import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.android.gms.common.SignInButton
 import com.google.android.material.button.MaterialButton
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 
 class LoginActivity : AppCompatActivity() {
 
@@ -127,24 +128,49 @@ class LoginActivity : AppCompatActivity() {
         btnSend.setOnClickListener {
             val email = etEmail.text.toString().trim()
 
-            if (email.isEmpty()) {
-                etEmail.error = "Email tidak boleh kosong"
-            } else {
-                sendResetEmail(email)
-                dialog.dismiss()
+            when {
+                email.isEmpty() -> {
+                    etEmail.error = "Email tidak boleh kosong"
+                }
+
+                !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
+                    etEmail.error = "Format email tidak valid"
+                }
+
+                else -> {
+                    // loading state
+                    btnSend.text = "Mengirim..."
+                    btnSend.isEnabled = false
+
+                    sendResetEmail(email, etEmail, btnSend, dialog)
+                }
             }
         }
+
         dialog.show()
     }
 
-    private fun sendResetEmail(email: String) {
+    private fun sendResetEmail(
+        email: String,
+        etEmail: TextInputEditText,
+        btnSend: MaterialButton,
+        dialog: androidx.appcompat.app.AlertDialog
+    ) {
         auth.sendPasswordResetEmail(email)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Toast.makeText(this, "Email reset password telah dikirim!", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Gagal mengirim email reset: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
-                }
+            .addOnCompleteListener {
+
+                // kembalikan tombol
+                btnSend.text = "Kirim Link Reset"
+                btnSend.isEnabled = true
+
+                //  pesan netral
+                Toast.makeText(
+                    this,
+                    "Jika email terdaftar, link reset akan dikirim",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                dialog.dismiss()
             }
     }
 }
