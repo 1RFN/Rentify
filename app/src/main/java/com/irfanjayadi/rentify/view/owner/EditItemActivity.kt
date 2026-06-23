@@ -63,6 +63,7 @@ class EditItemActivity : AppCompatActivity() {
         val etPrice       = findViewById<TextInputEditText>(R.id.etPrice)
         val etStock       = findViewById<TextInputEditText>(R.id.etStock)
         val etCategory    = findViewById<com.google.android.material.textfield.MaterialAutoCompleteTextView>(R.id.etCategoryDropdown)
+        val etLocation    = findViewById<TextInputEditText>(R.id.etLocation)
         val btnSave       = findViewById<MaterialButton>(R.id.btnSaveItem)
 
         btnSave.text = "Simpan Perubahan"
@@ -76,6 +77,7 @@ class EditItemActivity : AppCompatActivity() {
                     etPrice.setText(doc.getDouble("price_per_day")?.toLong()?.toString() ?: "0")
                     etStock.setText(doc.getLong("stock")?.toString() ?: "1")
                     etCategory.setText(doc.getString("category_name"), false)
+                    etLocation.setText(doc.getString("location") ?: "")
 
                     @Suppress("UNCHECKED_CAST")
                     val media = doc.get("media") as? List<String> ?: emptyList()
@@ -104,6 +106,7 @@ class EditItemActivity : AppCompatActivity() {
             val description = etDescription.text.toString().trim()
             val priceStr    = etPrice.text.toString().trim()
             val stockStr    = etStock.text.toString().trim()
+            val location    = etLocation.text.toString().trim()
 
             if (title.isEmpty() || category.isEmpty() || description.isEmpty()
                 || priceStr.isEmpty() || stockStr.isEmpty()) {
@@ -124,10 +127,10 @@ class EditItemActivity : AppCompatActivity() {
 
             if (newImageUris.isEmpty()) {
                 // Tidak ada foto baru, langsung update
-                updateFirestore(title, category, description, price, stock)
+                updateFirestore(title, category, description, price, stock, location)
             } else {
                 // Upload foto baru dulu, baru update
-                uploadNewImages(0, title, category, description, price, stock)
+                uploadNewImages(0, title, category, description, price, stock, location)
             }
         }
     }
@@ -135,11 +138,11 @@ class EditItemActivity : AppCompatActivity() {
     private fun uploadNewImages(
         index: Int,
         title: String, category: String, description: String,
-        price: Double, stock: Int
+        price: Double, stock: Int, location: String = ""
     ) {
         if (index >= newImageUris.size) {
             tvLoadingText.text = "Menyimpan perubahan..."
-            updateFirestore(title, category, description, price, stock)
+            updateFirestore(title, category, description, price, stock, location)
             return
         }
 
@@ -157,7 +160,7 @@ class EditItemActivity : AppCompatActivity() {
                 }
                 override fun onSuccess(requestId: String, resultData: Map<*, *>) {
                     finalImageUrls.add(resultData["secure_url"] as String)
-                    uploadNewImages(index + 1, title, category, description, price, stock)
+                    uploadNewImages(index + 1, title, category, description, price, stock, location)
                 }
                 override fun onError(requestId: String, error: ErrorInfo) {
                     loadingOverlay.visibility = View.GONE
@@ -170,7 +173,7 @@ class EditItemActivity : AppCompatActivity() {
 
     private fun updateFirestore(
         title: String, category: String, description: String,
-        price: Double, stock: Int
+        price: Double, stock: Int, location: String = ""
     ) {
         val updates = mapOf(
             "title"         to title,
@@ -178,6 +181,7 @@ class EditItemActivity : AppCompatActivity() {
             "description"   to description,
             "price_per_day" to price,
             "stock"         to stock,
+            "location"      to location,
             "media"         to finalImageUrls
         )
         firestore.collection("items").document(itemId).update(updates)

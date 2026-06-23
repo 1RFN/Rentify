@@ -14,6 +14,7 @@ data class Item(
     var status: String = "Tersedia",
     var media: List<String> = emptyList(),
 
+    var location: String = "",
     var rating: Float = 0f,
     @get:PropertyName("review_count") @set:PropertyName("review_count") var reviewCount: Int = 0,
     var created_at: Long = System.currentTimeMillis()

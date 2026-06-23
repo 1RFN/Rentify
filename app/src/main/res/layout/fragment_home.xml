@@ -122,8 +122,12 @@
                 android:visibility="visible" />
 
             <androidx.cardview.widget.CardView
+                android:id="@+id/cvNearbyItems"
                 android:layout_width="match_parent"
                 android:layout_height="100dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
                 app:cardBackgroundColor="@color/green_rentify"
                 app:cardCornerRadius="16dp"
                 android:layout_marginBottom="24dp">
