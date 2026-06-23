@@ -21,9 +21,10 @@ class ItemRenterAdapter(
         val ivItemImage: ImageView   = view.findViewById(R.id.ivItemImage)
         val tvItemTitle: TextView    = view.findViewById(R.id.tvItemTitle)
         val tvItemCategory: TextView = view.findViewById(R.id.tvItemCategory)
+        val tvItemLocation: TextView = view.findViewById(R.id.tvItemLocation)
         val tvItemPrice: TextView    = view.findViewById(R.id.tvItemPrice)
         val tvItemStatus: TextView   = view.findViewById(R.id.tvItemStatus)
-        val tvItemRating: TextView   = view.findViewById(R.id.tvItemRating) // tambahan rating
+        val tvItemRating: TextView   = view.findViewById(R.id.tvItemRating)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -37,6 +38,7 @@ class ItemRenterAdapter(
 
         holder.tvItemTitle.text    = item.title
         holder.tvItemCategory.text = item.categoryName
+        holder.tvItemLocation.text = item.location.ifEmpty { "Lokasi tidak tersedia" }
 
         val formatted = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID"))
             .format(item.pricePerDay)
