@@ -11,5 +11,6 @@ data class Transaction(
     @get:PropertyName("start_date") @set:PropertyName("start_date") var startDate: Timestamp? = null,
     @get:PropertyName("end_date") @set:PropertyName("end_date") var endDate: Timestamp? = null,
     @get:PropertyName("total_price") @set:PropertyName("total_price") var totalPrice: Double = 0.0,
-    var status: String = "menunggu"
+    var status: String = "menunggu",
+    @get:PropertyName("is_reviewed") @set:PropertyName("is_reviewed") var isReviewed: Boolean = false
 )

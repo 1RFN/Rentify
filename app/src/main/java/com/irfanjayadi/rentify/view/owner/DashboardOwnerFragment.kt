@@ -137,42 +137,41 @@ class DashboardOwnerFragment : Fragment() {
                 }
             }
 
-        // 3. Pesanan masuk (menggunakan tabel "transactions")
+        // 3. Pesanan Masuk (Ambil semua lalu filter lokal agar bebas error Indeks Firestore)
         firestore.collection("transactions")
             .whereEqualTo("owner_id", userId)
-            .whereEqualTo("status", "Menunggu Konfirmasi, Disewa")
             .get()
             .addOnSuccessListener { snapshot ->
                 if (!isAdded) return@addOnSuccessListener
 
-                val orders = snapshot.toObjects(Transaction::class.java)
-                orderAdapter.updateData(orders)
-                tvStatIncomingOrders.text = orders.size.toString()
+                // Ambil semua transaksi milik owner ini
+                val allTransactions = snapshot.toObjects(Transaction::class.java)
 
-                if (orders.isEmpty()) {
+                val activeOrders = allTransactions.filter {
+                    it.status == "Menunggu Konfirmasi"
+                }
+
+                orderAdapter.updateData(activeOrders)
+                tvStatIncomingOrders.text = activeOrders.size.toString()
+
+                if (activeOrders.isEmpty()) {
                     tvEmptyOrders.visibility = View.VISIBLE
                     rvIncomingOrders.visibility = View.GONE
                 } else {
                     tvEmptyOrders.visibility = View.GONE
                     rvIncomingOrders.visibility = View.VISIBLE
                 }
-            }
 
-        // 4. Pendapatan (Status "Selesai")
-        firestore.collection("transactions")
-            .whereEqualTo("owner_id", userId)
-            .whereEqualTo("status", "Selesai")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (!isAdded) return@addOnSuccessListener
-
-                var totalRevenue = 0.0
-                for (doc in snapshot.documents) {
-                    totalRevenue += doc.getDouble("total_price") ?: 0.0
-                }
+                // 4. FILTER LOKAL PENDAPATAN: Hitung hanya dari yang "Selesai"
+                val completedOrders = allTransactions.filter { it.status == "Selesai" }
+                val totalRevenue = completedOrders.sumOf { it.totalPrice }
 
                 val formatted = NumberFormat.getNumberInstance(Locale("id", "ID")).format(totalRevenue)
                 tvStatRevenue.text = "Rp $formatted"
+            }
+            .addOnFailureListener { e ->
+                if (!isAdded) return@addOnFailureListener
+                Toast.makeText(requireContext(), "Gagal memuat pesanan: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 

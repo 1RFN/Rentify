@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.irfanjayadi.rentify.R
@@ -92,9 +93,11 @@ class Pesanan : Fragment() {
 
     private fun setupAdapter() {
         adapter = OrderOwnerAdapter(
-            orders = allOrders,
-            onAccept = { tx -> updateOrderStatus(tx, "disewa") },
-            onReject = { tx -> updateOrderStatus(tx, "ditolak") }
+            orders = mutableListOf(),
+            onAccept = { tx -> updateOrderStatus(tx, "Disewa") },
+            onReject = { tx -> updateOrderStatus(tx, "Ditolak") },
+            // Asumsi di OrderOwnerAdapter nanti ada callback ke-3 untuk Selesai
+            onFinish = { tx -> updateOrderStatus(tx, "Selesai") }
         )
         rvOrders.layoutManager = LinearLayoutManager(requireContext())
         rvOrders.adapter = adapter
@@ -103,7 +106,8 @@ class Pesanan : Fragment() {
     private fun loadOrders() {
         val userId = auth.currentUser?.uid ?: return
 
-        firestore.collection("orders")
+        // PERBAIKAN 1: Menggunakan tabel "transactions"
+        firestore.collection("transactions")
             .whereEqualTo("owner_id", userId)
             .get()
             .addOnSuccessListener { snapshot ->
@@ -119,29 +123,29 @@ class Pesanan : Fragment() {
                     return@addOnSuccessListener
                 }
 
+                // FITUR OTOMATIS: Cek jika waktu sewa sudah habis (Selesai Otomatis)
+                val nowSeconds = Timestamp.now().seconds
+                for (tx in transactions) {
+                    if (tx.status.equals("Disewa", true) && tx.endDate != null) {
+                        if (tx.endDate!!.seconds < nowSeconds) {
+                            // Waktu habis, update database secara background
+                            updateOrderStatus(tx, "Selesai")
+                            tx.status = "Selesai" // Update UI lokal sementara
+                        }
+                    }
+                }
+
                 val itemIds = transactions.map { it.itemId }.distinct()
                 val renterIds = transactions.map { it.renterId }.distinct()
 
                 val itemTasks = itemIds.chunked(10).map { chunk ->
-                    firestore.collection("items")
-                        .whereIn("item_id", chunk)
-                        .get()
+                    firestore.collection("items").whereIn("item_id", chunk).get()
                 }
                 val userTasks = renterIds.chunked(10).map { chunk ->
-                    firestore.collection("users")
-                        .whereIn("uid", chunk)
-                        .get()
+                    firestore.collection("users").whereIn("uid", chunk).get()
                 }
 
                 val allTasks = itemTasks + userTasks
-                if (allTasks.isEmpty()) {
-                    val combined = transactions.map { OrderWithDetails(it, "", "", "") }
-                    allOrders.clear()
-                    allOrders.addAll(combined)
-                    allOrders.sortByDescending { it.transaction.startDate?.toDate()?.time ?: 0L }
-                    applyFilter()
-                    return@addOnSuccessListener
-                }
 
                 com.google.android.gms.tasks.Tasks.whenAll(allTasks)
                     .addOnSuccessListener {
@@ -186,7 +190,17 @@ class Pesanan : Fragment() {
         val filtered = if (currentFilter == "semua") {
             allOrders.toList()
         } else {
-            allOrders.filter { it.transaction.status.lowercase() == currentFilter }
+            allOrders.filter {
+                // PERBAIKAN: Gunakan .contains dan ignoreCase agar kebal salah ketik/huruf besar
+                val status = it.transaction.status
+                when (currentFilter) {
+                    "menunggu" -> status.contains("menunggu", ignoreCase = true)
+                    "disewa"   -> status.contains("disewa", ignoreCase = true)
+                    "selesai"  -> status.contains("selesai", ignoreCase = true)
+                    "ditolak"  -> status.contains("ditolak", ignoreCase = true)
+                    else -> true
+                }
+            }
         }
 
         tvOrderCount.text = "${filtered.size} pesanan"
@@ -206,39 +220,43 @@ class Pesanan : Fragment() {
     }
 
     private fun updateOrderStatus(tx: Transaction, newStatus: String) {
-        val orderRef = firestore.collection("orders")
-            .whereEqualTo("transaction_id", tx.transactionId)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (snapshot.documents.isEmpty()) return@addOnSuccessListener
+        // PERBAIKAN 3: Memperbaiki logika update dan penambahan/pengurangan stok
+        firestore.collection("transactions").document(tx.transactionId)
+            .update("status", newStatus)
+            .addOnSuccessListener {
+                if (!isAdded) return@addOnSuccessListener
 
-                val docId = snapshot.documents.first().id
+                // Jangan munculkan Toast jika ini Selesai Otomatis (dipicu oleh sistem)
+                if (newStatus != "Selesai") {
+                    val msg = if (newStatus == "Disewa") "Pesanan diterima" else "Pesanan ditolak"
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                }
 
-                firestore.collection("orders").document(docId)
-                    .update("status", newStatus)
-                    .addOnSuccessListener {
-                        if (!isAdded) return@addOnSuccessListener
-                        val msg = if (newStatus == "disewa") "Pesanan diterima" else "Pesanan ditolak"
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                val itemRef = firestore.collection("items").document(tx.itemId)
 
-                        // Update item status if accepted
-                        if (newStatus == "disewa") {
-                            firestore.collection("items")
-                                .whereEqualTo("item_id", tx.itemId)
-                                .get()
-                                .addOnSuccessListener { itemSnap ->
-                                    for (doc in itemSnap.documents) {
-                                        doc.reference.update("status", "Disewa")
-                                    }
-                                }
-                        }
+                firestore.runTransaction { transaction ->
+                    val snapshot = transaction.get(itemRef)
+                    val currentStock = snapshot.getLong("stock")?.toInt() ?: 0
 
-                        loadOrders()
+                    if (newStatus == "Disewa") {
+                        // Jika diterima, kurangi stok
+                        val newStock = if (currentStock > 0) currentStock - 1 else 0
+                        transaction.update(itemRef, "stock", newStock)
+                        if (newStock == 0) transaction.update(itemRef, "status", "Disewa")
+                    } else if (newStatus == "Selesai") {
+                        // Jika selesai, kembalikan stok
+                        val newStock = currentStock + 1
+                        transaction.update(itemRef, "stock", newStock)
+                        transaction.update(itemRef, "status", "Tersedia")
                     }
-                    .addOnFailureListener { e ->
-                        if (!isAdded) return@addOnFailureListener
-                        Toast.makeText(context, "Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
+                }.addOnSuccessListener {
+                    // Hanya reload jika perubahannya manual (bukan dari fungsi loop otomatis di atas)
+                    if(newStatus != "Selesai") loadOrders()
+                }
+            }
+            .addOnFailureListener { e ->
+                if (!isAdded) return@addOnFailureListener
+                Toast.makeText(context, "Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 }
