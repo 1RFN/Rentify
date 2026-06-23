@@ -251,11 +251,10 @@ class ItemDetailActivity : AppCompatActivity() {
     private fun loadReviews(itemId: String, rv: RecyclerView, tvEmpty: TextView, tvSeeAll: TextView) {
         firestore.collection("reviews")
             .whereEqualTo("itemId", itemId)
-            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-            .limit(4)
             .get()
             .addOnSuccessListener { snapshot ->
                 val reviews = snapshot.toObjects(com.irfanjayadi.rentify.model.entity.Review::class.java)
+                    .sortedByDescending { it.createdAt }
 
                 if (reviews.isEmpty()) {
                     tvEmpty.visibility = View.VISIBLE
@@ -268,6 +267,12 @@ class ItemDetailActivity : AppCompatActivity() {
                     tvSeeAll.visibility = if (reviews.size > 3) View.VISIBLE else View.GONE
                     rv.adapter = ReviewAdapter(displayReviews)
                 }
+            }
+            .addOnFailureListener { e ->
+                tvEmpty.visibility = View.VISIBLE
+                tvEmpty.text = "Gagal memuat ulasan"
+                rv.visibility = View.GONE
+                tvSeeAll.visibility = View.GONE
             }
     }
 }

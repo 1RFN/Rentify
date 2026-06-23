@@ -62,12 +62,24 @@ class AddItemActivity : AppCompatActivity() {
         val etPrice       = findViewById<TextInputEditText>(R.id.etPrice)
         val etStock       = findViewById<TextInputEditText>(R.id.etStock)
         val etCategory    = findViewById<com.google.android.material.textfield.MaterialAutoCompleteTextView>(R.id.etCategoryDropdown)
+        val etLocation    = findViewById<TextInputEditText>(R.id.etLocation)
 
         // Kategori statis
         val categoryList = listOf("Motor", "Mobil", "Kamera", "Sepeda", "Console", "Alat Camping", "Lainnya")
         etCategory.setAdapter(
             ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, categoryList)
         )
+
+        // Isi lokasi otomatis dari alamat user
+        auth.currentUser?.uid?.let { uid ->
+            firestore.collection("users").document(uid).get()
+                .addOnSuccessListener { doc ->
+                    val address = doc.getString("address") ?: ""
+                    if (address.isNotEmpty()) {
+                        etLocation.setText(address)
+                    }
+                }
+        }
 
         // Tombol pilih foto (bisa lebih dari 1)
         findViewById<MaterialButton>(R.id.btnPickPhoto).setOnClickListener {
@@ -85,6 +97,7 @@ class AddItemActivity : AppCompatActivity() {
             val description = etDescription.text.toString().trim()
             val priceStr    = etPrice.text.toString().trim()
             val stockStr    = etStock.text.toString().trim()
+            val location    = etLocation.text.toString().trim()
 
             if (title.isEmpty() || category.isEmpty() || description.isEmpty()
                 || priceStr.isEmpty() || stockStr.isEmpty()) {
@@ -103,7 +116,7 @@ class AddItemActivity : AppCompatActivity() {
             val price = priceStr.toDoubleOrNull() ?: 0.0
             val stock = stockStr.toIntOrNull() ?: 1
 
-            uploadNextImage(0, title, category, description, price, stock, ownerId)
+            uploadNextImage(0, title, category, description, price, stock, ownerId, location)
         }
     }
 
@@ -113,12 +126,12 @@ class AddItemActivity : AppCompatActivity() {
     private fun uploadNextImage(
         index: Int,
         title: String, category: String, description: String,
-        price: Double, stock: Int, ownerId: String
+        price: Double, stock: Int, ownerId: String, location: String = ""
     ) {
         if (index >= selectedImageUris.size) {
             // Semua foto selesai di-upload → simpan ke Firestore
             tvLoadingText.text = "Menyimpan ke database..."
-            saveItemToFirestore(title, category, description, price, stock, ownerId, uploadedImageUrls)
+            saveItemToFirestore(title, category, description, price, stock, ownerId, uploadedImageUrls, location)
             return
         }
 
@@ -140,7 +153,7 @@ class AddItemActivity : AppCompatActivity() {
                     val url = resultData["secure_url"] as String
                     uploadedImageUrls.add(url)
                     // Lanjut upload foto berikutnya
-                    uploadNextImage(index + 1, title, category, description, price, stock, ownerId)
+                    uploadNextImage(index + 1, title, category, description, price, stock, ownerId, location)
                 }
 
                 override fun onError(requestId: String, error: ErrorInfo) {
@@ -159,7 +172,8 @@ class AddItemActivity : AppCompatActivity() {
 
     private fun saveItemToFirestore(
         title: String, category: String, description: String,
-        price: Double, stock: Int, ownerId: String, imageUrls: List<String>
+        price: Double, stock: Int, ownerId: String, imageUrls: List<String>,
+        location: String = ""
     ) {
         val ref = firestore.collection("items").document()
         val data = hashMapOf(
@@ -172,6 +186,7 @@ class AddItemActivity : AppCompatActivity() {
             "status"        to "Tersedia",
             "stock"         to stock,
             "title"         to title,
+            "location"      to location,
             "created_at"    to System.currentTimeMillis()
         )
         ref.set(data)

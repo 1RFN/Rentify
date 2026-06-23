@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -17,6 +18,7 @@ import com.irfanjayadi.rentify.R
 import com.irfanjayadi.rentify.model.entity.Item
 import com.irfanjayadi.rentify.view.adapter.CategoryAdapter
 import com.irfanjayadi.rentify.view.adapter.ItemRenterAdapter
+import com.irfanjayadi.rentify.view.shared.NotificationActivity
 
 class HomeFragment : Fragment() {
 
@@ -38,6 +40,7 @@ class HomeFragment : Fragment() {
         val tvUserLocation = view.findViewById<TextView>(R.id.tvUserLocation)
         val rvItems        = view.findViewById<RecyclerView>(R.id.rvRecommendations)
         val layoutEmpty    = view.findViewById<LinearLayout>(R.id.layoutEmptyRecommendation)
+        val cvNearbyItems  = view.findViewById<androidx.cardview.widget.CardView>(R.id.cvNearbyItems)
 
         // Setup RecyclerView
         itemAdapter = ItemRenterAdapter(itemList) { item ->
@@ -48,12 +51,15 @@ class HomeFragment : Fragment() {
         }
 
         // Logika jika kotak pencarian di Home ditekan
-        val etSearchHome = view.findViewById<android.widget.EditText>(R.id.etSearchQuery) // Pastikan ID ini ada di fragment_home.xml
+        val etSearchHome = view.findViewById<android.widget.EditText>(R.id.etSearchQuery)
 
-        // Karena di home sifatnya hanya "pintu masuk", saat ditekan langsung pindah ke SearchFragment
-        etSearchHome?.isFocusable = false // Agar tidak memunculkan keyboard di Home
+        etSearchHome?.isFocusable = false
         etSearchHome?.setOnClickListener {
             (activity as? HomeRenterActivity)?.navigateToSearchWithData()
+        }
+
+        cvNearbyItems?.setOnClickListener {
+            (activity as? HomeRenterActivity)?.navigateToSearchWithData(nearby = true)
         }
 
         val rvCategories = view.findViewById<RecyclerView>(R.id.rvCategories)
@@ -62,6 +68,13 @@ class HomeFragment : Fragment() {
         val homeCategoryAdapter = CategoryAdapter(defaultCategories, "Semua") { selectedCategory ->
             (activity as? HomeRenterActivity)?.navigateToSearchWithData(category = selectedCategory)
         }
+
+        val btnNotif = view.findViewById<ImageView>(R.id.ivNotificationBell)
+        btnNotif?.setOnClickListener {
+            startActivity(Intent(requireContext(), NotificationActivity::class.java))
+        }
+
+        loadNotificationBadge(view)
 
         rvCategories.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         rvCategories.adapter = homeCategoryAdapter
@@ -112,6 +125,7 @@ class HomeFragment : Fragment() {
                 if (!isAdded) return@addOnSuccessListener
 
                 val items = snapshot.toObjects(Item::class.java)
+                    .sortedByDescending { it.reviewCount }
                 itemAdapter.updateData(items)
 
                 if (items.isEmpty()) {
@@ -125,6 +139,29 @@ class HomeFragment : Fragment() {
             .addOnFailureListener {
                 if (!isAdded) return@addOnFailureListener
                 Toast.makeText(context, "Gagal memuat barang", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun loadNotificationBadge(view: View) {
+        val userId = auth.currentUser?.uid ?: return
+        val tvBadge = view.findViewById<TextView>(R.id.tvNotificationBadge)
+
+        // PERBAIKAN: Mencari berdasarkan "user_id"
+        firestore.collection("notifications")
+            .whereEqualTo("user_id", userId)
+            .whereEqualTo("is_read", false)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || !isAdded) return@addSnapshotListener
+
+                val unreadCount = snapshot?.size() ?: 0
+                if (tvBadge != null) {
+                    if (unreadCount > 0) {
+                        tvBadge.visibility = View.VISIBLE
+                        tvBadge.text = if (unreadCount > 9) "9+" else unreadCount.toString()
+                    } else {
+                        tvBadge.visibility = View.GONE
+                    }
+                }
             }
     }
 }

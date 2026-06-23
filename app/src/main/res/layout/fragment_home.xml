@@ -64,14 +64,40 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                <RelativeLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"
-                    android:background="@drawable/bg_circle_white"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_notification" />
+                    android:layout_centerVertical="true">
+
+                    <!-- Ini Icon Loncengnya -->
+                    <ImageView
+                        android:id="@+id/ivNotificationBell"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_circle_white"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_notification" />
+
+                    <!-- Ini Lingkaran Merah Notifikasinya (tvNotificationBadge) -->
+                    <TextView
+                        android:id="@+id/tvNotificationBadge"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_alignEnd="@id/ivNotificationBell"
+                        android:layout_alignTop="@id/ivNotificationBell"
+                        android:layout_marginTop="-2dp"
+                        android:layout_marginEnd="-2dp"
+                        android:background="@drawable/bg_circle_yellow"
+                        android:backgroundTint="#F44336"
+                        android:textColor="@android:color/white"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:text="1"
+                        android:elevation="5dp"
+                        android:visibility="gone" />
+                </RelativeLayout>
             </RelativeLayout>
 
             <LinearLayout
@@ -122,8 +148,12 @@
                 android:visibility="visible" />
 
             <androidx.cardview.widget.CardView
+                android:id="@+id/cvNearbyItems"
                 android:layout_width="match_parent"
                 android:layout_height="100dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
                 app:cardBackgroundColor="@color/green_rentify"
                 app:cardCornerRadius="16dp"
                 android:layout_marginBottom="24dp">

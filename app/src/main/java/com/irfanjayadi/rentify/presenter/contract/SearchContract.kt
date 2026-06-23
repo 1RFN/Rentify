@@ -12,6 +12,6 @@ interface SearchContract {
     }
 
     interface Presenter {
-        fun searchItems(keyword: String, category: String, sortBy: String)
+        fun searchItems(keyword: String, category: String, sortBy: String, location: String = "")
     }
 }
