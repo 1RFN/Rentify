@@ -61,7 +61,7 @@ class HistoryOrderAdapter(
         holder.tvStatus.setTextColor(statusColor)
 
         // Tampilkan tombol Review HANYA jika status = Selesai
-        if (transaction.status.equals("Selesai", ignoreCase = true)) {
+        if (transaction.status.equals("Selesai", ignoreCase = true) && !transaction.isReviewed) {
             holder.btnReview.visibility = View.VISIBLE
             holder.btnReview.setOnClickListener { onReviewClick(transaction) }
         } else {

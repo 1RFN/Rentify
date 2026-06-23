@@ -86,7 +86,7 @@ class SearchItem : Fragment() {
 
     private fun setupItemList() {
         itemAdapter = ItemOwnerAdapter(
-            items = allItems,
+            items = mutableListOf(),
             onEdit = { item ->
                 val intent = Intent(requireContext(), EditItemActivity::class.java)
                 intent.putExtra("item_id", item.itemId)
@@ -160,7 +160,8 @@ class SearchItem : Fragment() {
         var filtered = allItems.toList()
 
         if (currentCategory != "Semua") {
-            filtered = filtered.filter { it.categoryName == currentCategory }
+            // PERBAIKAN: Gunakan equals dengan ignoreCase
+            filtered = filtered.filter { it.categoryName.equals(currentCategory, ignoreCase = true) }
         }
 
         if (currentKeyword.isNotEmpty()) {
@@ -189,7 +190,6 @@ class SearchItem : Fragment() {
             layoutEmptyItems.visibility = View.GONE
         }
     }
-
     private fun confirmDeleteItem(item: Item) {
         AlertDialog.Builder(requireContext())
             .setTitle("Hapus Barang")
