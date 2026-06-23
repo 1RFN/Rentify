@@ -38,6 +38,7 @@ class HomeFragment : Fragment() {
         val tvUserLocation = view.findViewById<TextView>(R.id.tvUserLocation)
         val rvItems        = view.findViewById<RecyclerView>(R.id.rvRecommendations)
         val layoutEmpty    = view.findViewById<LinearLayout>(R.id.layoutEmptyRecommendation)
+        val cvNearbyItems  = view.findViewById<androidx.cardview.widget.CardView>(R.id.cvNearbyItems)
 
         // Setup RecyclerView
         itemAdapter = ItemRenterAdapter(itemList) { item ->
@@ -48,12 +49,15 @@ class HomeFragment : Fragment() {
         }
 
         // Logika jika kotak pencarian di Home ditekan
-        val etSearchHome = view.findViewById<android.widget.EditText>(R.id.etSearchQuery) // Pastikan ID ini ada di fragment_home.xml
+        val etSearchHome = view.findViewById<android.widget.EditText>(R.id.etSearchQuery)
 
-        // Karena di home sifatnya hanya "pintu masuk", saat ditekan langsung pindah ke SearchFragment
-        etSearchHome?.isFocusable = false // Agar tidak memunculkan keyboard di Home
+        etSearchHome?.isFocusable = false
         etSearchHome?.setOnClickListener {
             (activity as? HomeRenterActivity)?.navigateToSearchWithData()
+        }
+
+        cvNearbyItems?.setOnClickListener {
+            (activity as? HomeRenterActivity)?.navigateToSearchWithData(nearby = true)
         }
 
         val rvCategories = view.findViewById<RecyclerView>(R.id.rvCategories)
@@ -112,6 +116,7 @@ class HomeFragment : Fragment() {
                 if (!isAdded) return@addOnSuccessListener
 
                 val items = snapshot.toObjects(Item::class.java)
+                    .sortedByDescending { it.reviewCount }
                 itemAdapter.updateData(items)
 
                 if (items.isEmpty()) {
