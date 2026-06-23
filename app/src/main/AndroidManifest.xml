@@ -62,6 +62,10 @@
         <activity
             android:name=".view.renter.AddReviewActivity"
             android:exported="false"/>
+
+        <activity
+            android:name=".view.shared.NotificationActivity"
+            android:exported="false"/>
     </application>
 
 </manifest>
