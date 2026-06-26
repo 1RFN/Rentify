@@ -13,7 +13,6 @@ import com.irfanjayadi.rentify.R
 import com.irfanjayadi.rentify.model.entity.Transaction
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 data class OrderWithDetails(
@@ -26,7 +25,8 @@ data class OrderWithDetails(
 class OrderOwnerAdapter(
     private val orders: MutableList<OrderWithDetails>,
     private val onAccept: (Transaction) -> Unit,
-    private val onReject: (Transaction) -> Unit
+    private val onReject: (Transaction) -> Unit,
+    private val onFinish: (Transaction) -> Unit // MENGHILANGKAN ERROR MERAH
 ) : RecyclerView.Adapter<OrderOwnerAdapter.ViewHolder>() {
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -63,32 +63,24 @@ class OrderOwnerAdapter(
         val endStr = tx.endDate?.toDate()?.let { dateFmt.format(it) } ?: "?"
         holder.tvDates.text = "$startStr - $endStr"
 
-        // Status badge
-        val status = tx.status.lowercase()
-        val statusDisplay = when (status) {
-            "menunggu" -> "Menunggu"
-            "disewa" -> "Disewa"
-            "selesai" -> "Selesai"
-            "ditolak" -> "Ditolak"
+        // PERBAIKAN: Menangani teks dari Firestore yang lebih panjang
+        val statusLower = tx.status.lowercase()
+        val statusDisplay = when {
+            statusLower.contains("menunggu") -> "Menunggu"
+            statusLower == "disewa" -> "Disewa"
+            statusLower == "selesai" -> "Selesai"
+            statusLower == "ditolak" -> "Ditolak"
             else -> tx.status
         }
         holder.tvStatus.text = statusDisplay
 
-        val statusBg = when (status) {
-            "menunggu" -> R.drawable.bg_circle_yellow
-            "disewa" -> R.drawable.bg_circle_yellow
-            "selesai" -> R.drawable.bg_location_chip
-            "ditolak" -> R.drawable.bg_mode_unselected
-            else -> R.drawable.bg_circle_white
-        }
-        val statusColor = when (status) {
-            "menunggu" -> ContextCompat.getColor(holder.itemView.context, R.color.black)
-            "disewa" -> ContextCompat.getColor(holder.itemView.context, R.color.green_rentify)
-            "selesai" -> ContextCompat.getColor(holder.itemView.context, R.color.gray_text)
-            "ditolak" -> ContextCompat.getColor(holder.itemView.context, R.color.red_rentify)
+        val statusColor = when {
+            statusLower.contains("menunggu") -> android.graphics.Color.parseColor("#FFC107")
+            statusLower == "disewa" -> ContextCompat.getColor(holder.itemView.context, R.color.green_rentify)
+            statusLower == "selesai" -> ContextCompat.getColor(holder.itemView.context, R.color.gray_text)
+            statusLower == "ditolak" -> ContextCompat.getColor(holder.itemView.context, R.color.red_rentify)
             else -> ContextCompat.getColor(holder.itemView.context, R.color.black)
         }
-        holder.tvStatus.setBackgroundResource(statusBg)
         holder.tvStatus.setTextColor(statusColor)
 
         // Item image
@@ -103,12 +95,28 @@ class OrderOwnerAdapter(
             holder.ivItemImage.setImageResource(R.drawable.ic_profile)
         }
 
-        // Action buttons only for pending
-        if (status == "menunggu") {
+        // PERBAIKAN LOGIKA TOMBOL AKSI
+        if (statusLower.contains("menunggu")) {
+            // Jika Menunggu: Munculkan Terima & Tolak
             holder.layoutActions.visibility = View.VISIBLE
+            holder.btnReject.visibility = View.VISIBLE
+            holder.btnAccept.visibility = View.VISIBLE
+
+            holder.btnAccept.text = "Terima"
             holder.btnAccept.setOnClickListener { onAccept(tx) }
             holder.btnReject.setOnClickListener { onReject(tx) }
+
+        } else if (statusLower == "disewa") {
+            // Jika Disewa: Sembunyikan Tolak, Ubah tombol Terima menjadi Selesai
+            holder.layoutActions.visibility = View.VISIBLE
+            holder.btnReject.visibility = View.GONE
+            holder.btnAccept.visibility = View.VISIBLE
+
+            holder.btnAccept.text = "Selesaikan Pesanan"
+            holder.btnAccept.setOnClickListener { onFinish(tx) }
+
         } else {
+            // Jika Selesai/Ditolak: Sembunyikan semua tombol
             holder.layoutActions.visibility = View.GONE
         }
     }

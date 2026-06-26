@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -16,9 +17,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.irfanjayadi.rentify.R
 import com.irfanjayadi.rentify.model.entity.Item
+import com.irfanjayadi.rentify.model.entity.Transaction
+import com.irfanjayadi.rentify.view.adapter.IncomingOrderAdapter
 import com.irfanjayadi.rentify.view.adapter.ItemOwnerAdapter
 import java.text.NumberFormat
 import java.util.Locale
+import com.irfanjayadi.rentify.view.shared.NotificationActivity
 
 class DashboardOwnerFragment : Fragment() {
 
@@ -36,7 +40,10 @@ class DashboardOwnerFragment : Fragment() {
     private lateinit var rvMyItems: RecyclerView
 
     private lateinit var itemAdapter: ItemOwnerAdapter
+    private lateinit var orderAdapter: IncomingOrderAdapter
+
     private val itemList = mutableListOf<Item>()
+    private val orderList = mutableListOf<Transaction>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -47,7 +54,6 @@ class DashboardOwnerFragment : Fragment() {
         auth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
 
-        // Init views
         tvDashboardName       = view.findViewById(R.id.tvDashboardName)
         tvStatActiveItems     = view.findViewById(R.id.tvStatActiveItems)
         tvStatIncomingOrders  = view.findViewById(R.id.tvStatIncomingOrders)
@@ -57,7 +63,6 @@ class DashboardOwnerFragment : Fragment() {
         rvIncomingOrders      = view.findViewById(R.id.rvIncomingOrders)
         rvMyItems             = view.findViewById(R.id.rvMyItems)
 
-        // Setup RecyclerView barang
         itemAdapter = ItemOwnerAdapter(
             items    = itemList,
             onEdit   = { item -> openEditItem(item) },
@@ -67,12 +72,27 @@ class DashboardOwnerFragment : Fragment() {
         rvMyItems.adapter = itemAdapter
         rvMyItems.isNestedScrollingEnabled = false
 
-        // FAB tambah barang
+        orderAdapter = IncomingOrderAdapter(
+            orders = orderList,
+            onAccept = { transaction -> updateOrderStatus(transaction, "Disewa") },
+            onReject = { transaction -> updateOrderStatus(transaction, "Ditolak") },
+            onFinish = { transaction -> updateOrderStatus(transaction, "Selesai") }
+        )
+        rvIncomingOrders.layoutManager = LinearLayoutManager(requireContext())
+        rvIncomingOrders.adapter = orderAdapter
+        rvIncomingOrders.isNestedScrollingEnabled = false
+
         view.findViewById<FloatingActionButton>(R.id.fabAddItem).setOnClickListener {
             startActivity(Intent(requireContext(), AddItemActivity::class.java))
         }
 
-        // Lihat Semua → pindah ke tab Barang Saya
+        val btnNotif = view.findViewById<ImageView>(R.id.ivNotificationBell)
+        btnNotif?.setOnClickListener {
+            startActivity(Intent(requireContext(), NotificationActivity::class.java))
+        }
+
+        loadNotificationBadge(view)
+
         view.findViewById<TextView>(R.id.tvSeeAll).setOnClickListener {
             val activity = requireActivity()
             if (activity is DashboardOwnerActivity) {
@@ -91,7 +111,6 @@ class DashboardOwnerFragment : Fragment() {
     private fun loadDashboardData() {
         val userId = auth.currentUser?.uid ?: return
 
-        // 1. Nama user
         firestore.collection("users").document(userId).get()
             .addOnSuccessListener { doc ->
                 if (!isAdded) return@addOnSuccessListener
@@ -99,7 +118,6 @@ class DashboardOwnerFragment : Fragment() {
                 tvDashboardName.text = "Dashboard ${name.split(" ")[0]}"
             }
 
-        // 2. Barang milik owner
         firestore.collection("items")
             .whereEqualTo("owner_id", userId)
             .get()
@@ -121,43 +139,100 @@ class DashboardOwnerFragment : Fragment() {
                 }
             }
 
-        // 3. Pesanan masuk (status = "pending" / "menunggu")
-        firestore.collection("orders")
+        firestore.collection("transactions")
             .whereEqualTo("owner_id", userId)
-            .whereEqualTo("status", "menunggu")
             .get()
             .addOnSuccessListener { snapshot ->
                 if (!isAdded) return@addOnSuccessListener
 
-                val orderCount = snapshot.size()
-                tvStatIncomingOrders.text = orderCount.toString()
+                val allTransactions = snapshot.toObjects(Transaction::class.java)
+                val activeOrders = allTransactions.filter { it.status == "Menunggu Konfirmasi" }
 
-                if (orderCount == 0) {
+                orderAdapter.updateData(activeOrders)
+                tvStatIncomingOrders.text = activeOrders.size.toString()
+
+                if (activeOrders.isEmpty()) {
                     tvEmptyOrders.visibility = View.VISIBLE
                     rvIncomingOrders.visibility = View.GONE
                 } else {
                     tvEmptyOrders.visibility = View.GONE
                     rvIncomingOrders.visibility = View.VISIBLE
-                    // TODO: setup order adapter jika sudah dibuat
                 }
-            }
 
-        // 4. Pendapatan bulan ini (pesanan status = "selesai" bulan ini)
-        firestore.collection("orders")
-            .whereEqualTo("owner_id", userId)
-            .whereEqualTo("status", "selesai")
-            .get()
-            .addOnSuccessListener { snapshot ->
+                val completedOrders = allTransactions.filter { it.status == "Selesai" }
+                val totalRevenue = completedOrders.sumOf { it.totalPrice }
+
+                val formatted = NumberFormat.getNumberInstance(Locale("id", "ID")).format(totalRevenue)
+                tvStatRevenue.text = "Rp $formatted"
+            }
+            .addOnFailureListener { e ->
+                if (!isAdded) return@addOnFailureListener
+                Toast.makeText(requireContext(), "Gagal memuat pesanan: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun updateOrderStatus(transaction: Transaction, newStatus: String, isAutoFinish: Boolean = false) {
+        firestore.collection("transactions").document(transaction.transactionId)
+            .update("status", newStatus)
+            .addOnSuccessListener {
                 if (!isAdded) return@addOnSuccessListener
 
-                var totalRevenue = 0.0
-                for (doc in snapshot.documents) {
-                    totalRevenue += doc.getDouble("total_price") ?: 0.0
+                if (!isAutoFinish) {
+                    val msg = when (newStatus) {
+                        "Disewa" -> "Pesanan diterima"
+                        "Ditolak" -> "Pesanan ditolak"
+                        "Selesai" -> "Pesanan diselesaikan"
+                        else -> "Status diperbarui"
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 }
 
-                val formatted = NumberFormat.getNumberInstance(Locale("id", "ID"))
-                    .format(totalRevenue)
-                tvStatRevenue.text = "Rp $formatted"
+                // Notifikasi
+                val notifRef = firestore.collection("notifications").document("notif_${transaction.transactionId}_${newStatus}")
+                val title = if (newStatus == "Disewa") "Pesanan Diterima! 🎉"
+                else if (newStatus == "Ditolak") "Pesanan Ditolak 😔"
+                else "Pesanan Selesai ✅"
+
+                val message = if (newStatus == "Disewa") "Hore! Pemilik telah menyetujui pesananmu. Segera hubungi pemilik."
+                else if (newStatus == "Ditolak") "Maaf, pemilik menolak pesananmu untuk saat ini."
+                else "Pesanan telah selesai. Yuk beri ulasan untuk pengalamanmu!"
+
+                val type = if (newStatus == "Selesai") "MINTA_ULASAN" else "STATUS_UPDATE"
+
+                val notification = com.irfanjayadi.rentify.model.entity.Notification(
+                    notificationId = notifRef.id,
+                    userId = transaction.renterId,
+                    title = title,
+                    massage = message,
+                    type = type
+                )
+                notifRef.set(notification)
+
+                val itemRef = firestore.collection("items").document(transaction.itemId)
+
+                // Mencegah error NotFound jika barang sudah dihapus
+                firestore.runTransaction { firestoreTransaction ->
+                    val snapshot = firestoreTransaction.get(itemRef)
+                    if (snapshot.exists()) {
+                        val currentStock = snapshot.getLong("stock")?.toInt() ?: 0
+
+                        if (newStatus == "Disewa") {
+                            val newStock = if (currentStock > 0) currentStock - 1 else 0
+                            firestoreTransaction.update(itemRef, "stock", newStock)
+                            if (newStock == 0) firestoreTransaction.update(itemRef, "status", "Disewa")
+                        } else if (newStatus == "Selesai") {
+                            val newStock = currentStock + 1
+                            firestoreTransaction.update(itemRef, "stock", newStock)
+                            firestoreTransaction.update(itemRef, "status", "Tersedia")
+                        }
+                    }
+                }.addOnSuccessListener {
+                    if (!isAutoFinish) loadDashboardData()
+                }
+            }
+            .addOnFailureListener { e ->
+                if (!isAdded) return@addOnFailureListener
+                Toast.makeText(context, "Gagal mengubah status pesanan", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -187,6 +262,28 @@ class DashboardOwnerFragment : Fragment() {
             .addOnFailureListener { e ->
                 if (!isAdded) return@addOnFailureListener
                 Toast.makeText(requireContext(), "Gagal menghapus: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun loadNotificationBadge(view: View) {
+        val userId = auth.currentUser?.uid ?: return
+        val tvBadge = view.findViewById<TextView>(R.id.tvNotificationBadge)
+
+        firestore.collection("notifications")
+            .whereEqualTo("user_id", userId)
+            .whereEqualTo("is_read", false)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || !isAdded) return@addSnapshotListener
+
+                val unreadCount = snapshot?.size() ?: 0
+                if (tvBadge != null) {
+                    if (unreadCount > 0) {
+                        tvBadge.visibility = View.VISIBLE
+                        tvBadge.text = if (unreadCount > 9) "9+" else unreadCount.toString()
+                    } else {
+                        tvBadge.visibility = View.GONE
+                    }
+                }
             }
     }
 }

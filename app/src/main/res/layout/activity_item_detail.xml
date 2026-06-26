@@ -312,4 +312,16 @@
             app:cornerRadius="12dp"/>
     </LinearLayout>
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabWhatsApp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="100dp"
+        android:src="@android:drawable/stat_notify_chat"
+        app:tint="@android:color/white"
+        app:backgroundTint="#25D366"
+        android:contentDescription="Chat WhatsApp Pemilik" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

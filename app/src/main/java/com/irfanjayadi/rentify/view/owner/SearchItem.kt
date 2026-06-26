@@ -75,28 +75,18 @@ class SearchItem : Fragment() {
     }
 
     private fun setupCategoryFilter() {
-        val initial = mutableListOf("Semua")
-        categoryAdapter = CategoryAdapter(initial, currentCategory) { category ->
+        val defaultCategories = listOf("Semua", "Motor", "Mobil", "Kamera", "Sepeda", "Console", "Alat Camping", "Lainnya")
+        categoryAdapter = CategoryAdapter(defaultCategories, currentCategory) { category ->
             currentCategory = category
             applyFilters()
         }
         rvItemCategories.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         rvItemCategories.adapter = categoryAdapter
-
-        firestore.collection("categories").get()
-            .addOnSuccessListener { snapshot ->
-                if (!isAdded) return@addOnSuccessListener
-                val list = mutableListOf("Semua")
-                for (doc in snapshot) {
-                    doc.getString("name")?.let { list.add(it) }
-                }
-                categoryAdapter.updateData(list)
-            }
     }
 
     private fun setupItemList() {
         itemAdapter = ItemOwnerAdapter(
-            items = allItems,
+            items = mutableListOf(),
             onEdit = { item ->
                 val intent = Intent(requireContext(), EditItemActivity::class.java)
                 intent.putExtra("item_id", item.itemId)
@@ -170,7 +160,8 @@ class SearchItem : Fragment() {
         var filtered = allItems.toList()
 
         if (currentCategory != "Semua") {
-            filtered = filtered.filter { it.categoryName == currentCategory }
+            // PERBAIKAN: Gunakan equals dengan ignoreCase
+            filtered = filtered.filter { it.categoryName.equals(currentCategory, ignoreCase = true) }
         }
 
         if (currentKeyword.isNotEmpty()) {
@@ -199,7 +190,6 @@ class SearchItem : Fragment() {
             layoutEmptyItems.visibility = View.GONE
         }
     }
-
     private fun confirmDeleteItem(item: Item) {
         AlertDialog.Builder(requireContext())
             .setTitle("Hapus Barang")

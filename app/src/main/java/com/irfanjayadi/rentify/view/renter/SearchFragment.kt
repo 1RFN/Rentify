@@ -19,6 +19,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.irfanjayadi.rentify.R
 import com.irfanjayadi.rentify.model.entity.Item
@@ -52,6 +53,14 @@ class SearchFragment : Fragment(), SearchContract.View {
     // Mencegah trigger pencarian berulang saat reset filter via kode
     private var isProgrammaticChange = false
 
+    // Mode "Barang Tersedia di Dekatmu"
+    private var isNearbyMode = false
+    private var currentLocation = ""
+
+    private lateinit var auth: FirebaseAuth
+    private lateinit var firestore: FirebaseFirestore
+    private lateinit var tvNearbyInfo: TextView
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -59,21 +68,27 @@ class SearchFragment : Fragment(), SearchContract.View {
         val view = inflater.inflate(R.layout.fragment_search, container, false)
 
         presenter = SearchPresenter(this)
+        auth = FirebaseAuth.getInstance()
+        firestore = FirebaseFirestore.getInstance()
+
         initViews(view)
         setupAdapters()
         setupListeners()
 
-        // Ambil data yang dilempar dari HomeFragment (jika ada)
         arguments?.let {
             currentKeyword = it.getString("keyword", "")
             currentCategory = it.getString("category", "Semua")
+            isNearbyMode = it.getBoolean("nearby", false)
         }
 
         etSearchQuery.setText(currentKeyword)
         categoryAdapter.setSelectedCategory(currentCategory)
 
-        // Jalankan pencarian awal
-        performSearch()
+        if (isNearbyMode) {
+            loadUserLocationAndSearch()
+        } else {
+            performSearch()
+        }
 
         return view
     }
@@ -83,6 +98,7 @@ class SearchFragment : Fragment(), SearchContract.View {
         ivClearSearch = view.findViewById(R.id.ivClearSearch)
         rvSearchResults = view.findViewById(R.id.rvSearchResults)
         layoutEmptySearch = view.findViewById(R.id.layoutEmptySearch)
+        tvNearbyInfo = view.findViewById(R.id.tvNearbyInfo)
 
         // Setup Dropdown (Spinner) dan Reset
         spinnerSortPrice = view.findViewById(R.id.spinnerSortPrice)
@@ -97,25 +113,13 @@ class SearchFragment : Fragment(), SearchContract.View {
 
         // Setup Kategori
         val rvSearchCategories = view.findViewById<RecyclerView>(R.id.rvSearchCategories)
-        val initialCategories = mutableListOf("Semua")
-        categoryAdapter = CategoryAdapter(initialCategories, currentCategory) { selectedCategory ->
+        val defaultCategories = listOf("Semua", "Motor", "Mobil", "Kamera", "Sepeda", "Console", "Alat Camping")
+        categoryAdapter = CategoryAdapter(defaultCategories, currentCategory) { selectedCategory ->
             currentCategory = selectedCategory
             performSearch()
         }
         rvSearchCategories.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         rvSearchCategories.adapter = categoryAdapter
-
-        // Tarik Kategori dari Firestore
-        FirebaseFirestore.getInstance().collection("categories")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (!isAdded) return@addOnSuccessListener
-                val categoryList = mutableListOf("Semua")
-                for (doc in snapshot) {
-                    doc.getString("name")?.let { categoryList.add(it) }
-                }
-                categoryAdapter.updateData(categoryList)
-            }
     }
 
     private fun setupAdapters() {
@@ -219,7 +223,34 @@ class SearchFragment : Fragment(), SearchContract.View {
     }
 
     private fun performSearch() {
-        presenter.searchItems(currentKeyword, currentCategory, currentSortBy)
+        presenter.searchItems(currentKeyword, currentCategory, currentSortBy, currentLocation)
+    }
+
+    private fun loadUserLocationAndSearch() {
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            performSearch()
+            return
+        }
+        firestore.collection("users").document(userId).get()
+            .addOnSuccessListener { doc ->
+                val address = doc.getString("address") ?: ""
+                currentLocation = address
+                if (address.isNotEmpty()) {
+                    tvNearbyInfo.text = "Menampilkan barang di sekitar \"$address\""
+                    tvNearbyInfo.visibility = View.VISIBLE
+                    tvNearbyInfo.setOnClickListener {
+                        isNearbyMode = false
+                        currentLocation = ""
+                        tvNearbyInfo.visibility = View.GONE
+                        performSearch()
+                    }
+                }
+                performSearch()
+            }
+            .addOnFailureListener {
+                performSearch()
+            }
     }
 
     // --- Implementasi SearchContract.View ---

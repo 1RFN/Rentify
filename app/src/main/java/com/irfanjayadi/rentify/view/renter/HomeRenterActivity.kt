@@ -38,12 +38,12 @@ class HomeRenterActivity : AppCompatActivity() {
             .commit()
     }
 
-    fun navigateToSearchWithData(keyword: String = "", category: String = "Semua") {
-        // 1. Siapkan fragment search beserta datanya
+    fun navigateToSearchWithData(keyword: String = "", category: String = "Semua", nearby: Boolean = false) {
         val searchFragment = SearchFragment()
         val bundle = Bundle()
         bundle.putString("keyword", keyword)
         bundle.putString("category", category)
+        bundle.putBoolean("nearby", nearby)
         searchFragment.arguments = bundle
 
         // 2. Load fragmentnya secara manual

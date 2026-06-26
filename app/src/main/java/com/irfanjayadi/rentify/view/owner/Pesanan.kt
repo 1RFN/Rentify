@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.irfanjayadi.rentify.R
@@ -92,9 +93,10 @@ class Pesanan : Fragment() {
 
     private fun setupAdapter() {
         adapter = OrderOwnerAdapter(
-            orders = allOrders,
-            onAccept = { tx -> updateOrderStatus(tx, "disewa") },
-            onReject = { tx -> updateOrderStatus(tx, "ditolak") }
+            orders = mutableListOf(),
+            onAccept = { tx -> updateOrderStatus(tx, "Disewa") },
+            onReject = { tx -> updateOrderStatus(tx, "Ditolak") },
+            onFinish = { tx -> updateOrderStatus(tx, "Selesai") }
         )
         rvOrders.layoutManager = LinearLayoutManager(requireContext())
         rvOrders.adapter = adapter
@@ -103,7 +105,7 @@ class Pesanan : Fragment() {
     private fun loadOrders() {
         val userId = auth.currentUser?.uid ?: return
 
-        firestore.collection("orders")
+        firestore.collection("transactions")
             .whereEqualTo("owner_id", userId)
             .get()
             .addOnSuccessListener { snapshot ->
@@ -119,29 +121,27 @@ class Pesanan : Fragment() {
                     return@addOnSuccessListener
                 }
 
+                val nowSeconds = Timestamp.now().seconds
+                for (tx in transactions) {
+                    if (tx.status.equals("Disewa", true) && tx.endDate != null) {
+                        if (tx.endDate!!.seconds < nowSeconds) {
+                            updateOrderStatus(tx, "Selesai", isAutoFinish = true)
+                            tx.status = "Selesai"
+                        }
+                    }
+                }
+
                 val itemIds = transactions.map { it.itemId }.distinct()
                 val renterIds = transactions.map { it.renterId }.distinct()
 
                 val itemTasks = itemIds.chunked(10).map { chunk ->
-                    firestore.collection("items")
-                        .whereIn("item_id", chunk)
-                        .get()
+                    firestore.collection("items").whereIn("item_id", chunk).get()
                 }
                 val userTasks = renterIds.chunked(10).map { chunk ->
-                    firestore.collection("users")
-                        .whereIn("uid", chunk)
-                        .get()
+                    firestore.collection("users").whereIn("uid", chunk).get()
                 }
 
                 val allTasks = itemTasks + userTasks
-                if (allTasks.isEmpty()) {
-                    val combined = transactions.map { OrderWithDetails(it, "", "", "") }
-                    allOrders.clear()
-                    allOrders.addAll(combined)
-                    allOrders.sortByDescending { it.transaction.startDate?.toDate()?.time ?: 0L }
-                    applyFilter()
-                    return@addOnSuccessListener
-                }
 
                 com.google.android.gms.tasks.Tasks.whenAll(allTasks)
                     .addOnSuccessListener {
@@ -186,7 +186,16 @@ class Pesanan : Fragment() {
         val filtered = if (currentFilter == "semua") {
             allOrders.toList()
         } else {
-            allOrders.filter { it.transaction.status.lowercase() == currentFilter }
+            allOrders.filter {
+                val status = it.transaction.status
+                when (currentFilter) {
+                    "menunggu" -> status.contains("menunggu", ignoreCase = true)
+                    "disewa"   -> status.contains("disewa", ignoreCase = true)
+                    "selesai"  -> status.contains("selesai", ignoreCase = true)
+                    "ditolak"  -> status.contains("ditolak", ignoreCase = true)
+                    else -> true
+                }
+            }
         }
 
         tvOrderCount.text = "${filtered.size} pesanan"
@@ -205,40 +214,69 @@ class Pesanan : Fragment() {
         layoutEmptyOrders.visibility = View.VISIBLE
     }
 
-    private fun updateOrderStatus(tx: Transaction, newStatus: String) {
-        val orderRef = firestore.collection("orders")
-            .whereEqualTo("transaction_id", tx.transactionId)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (snapshot.documents.isEmpty()) return@addOnSuccessListener
+    private fun updateOrderStatus(tx: Transaction, newStatus: String, isAutoFinish: Boolean = false) {
+        // PERBAIKAN: Menggunakan referensi ke "transactions"
+        firestore.collection("transactions").document(tx.transactionId)
+            .update("status", newStatus)
+            .addOnSuccessListener {
+                if (!isAdded) return@addOnSuccessListener
 
-                val docId = snapshot.documents.first().id
+                if (!isAutoFinish) {
+                    val msg = when (newStatus) {
+                        "Disewa" -> "Pesanan diterima"
+                        "Ditolak" -> "Pesanan ditolak"
+                        "Selesai" -> "Pesanan diselesaikan"
+                        else -> "Status diperbarui"
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                }
 
-                firestore.collection("orders").document(docId)
-                    .update("status", newStatus)
-                    .addOnSuccessListener {
-                        if (!isAdded) return@addOnSuccessListener
-                        val msg = if (newStatus == "disewa") "Pesanan diterima" else "Pesanan ditolak"
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                // Notifikasi Statis (Anti-ganda)
+                val notifRef = firestore.collection("notifications").document("notif_${tx.transactionId}_${newStatus}")
+                val title = if (newStatus == "Disewa") "Pesanan Diterima! 🎉"
+                else if (newStatus == "Ditolak") "Pesanan Ditolak 😔"
+                else "Pesanan Selesai ✅"
 
-                        // Update item status if accepted
-                        if (newStatus == "disewa") {
-                            firestore.collection("items")
-                                .whereEqualTo("item_id", tx.itemId)
-                                .get()
-                                .addOnSuccessListener { itemSnap ->
-                                    for (doc in itemSnap.documents) {
-                                        doc.reference.update("status", "Disewa")
-                                    }
-                                }
+                val message = if (newStatus == "Disewa") "Hore! Pemilik telah menyetujui pesananmu. Segera hubungi pemilik."
+                else if (newStatus == "Ditolak") "Maaf, pemilik menolak pesananmu untuk saat ini."
+                else "Pesanan telah selesai. Yuk beri ulasan untuk pengalamanmu!"
+
+                val type = if (newStatus == "Selesai") "MINTA_ULASAN" else "STATUS_UPDATE"
+
+                val notification = com.irfanjayadi.rentify.model.entity.Notification(
+                    notificationId = notifRef.id,
+                    userId = tx.renterId,
+                    title = title,
+                    massage = message,
+                    type = type
+                )
+                notifRef.set(notification)
+
+                val itemRef = firestore.collection("items").document(tx.itemId)
+
+                // Mencegah error NotFound jika barang sudah dihapus
+                firestore.runTransaction { transaction ->
+                    val snapshot = transaction.get(itemRef)
+                    if (snapshot.exists()) {
+                        val currentStock = snapshot.getLong("stock")?.toInt() ?: 0
+
+                        if (newStatus == "Disewa") {
+                            val newStock = if (currentStock > 0) currentStock - 1 else 0
+                            transaction.update(itemRef, "stock", newStock)
+                            if (newStock == 0) transaction.update(itemRef, "status", "Disewa")
+                        } else if (newStatus == "Selesai") {
+                            val newStock = currentStock + 1
+                            transaction.update(itemRef, "stock", newStock)
+                            transaction.update(itemRef, "status", "Tersedia")
                         }
-
-                        loadOrders()
                     }
-                    .addOnFailureListener { e ->
-                        if (!isAdded) return@addOnFailureListener
-                        Toast.makeText(context, "Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
+                }.addOnSuccessListener {
+                    if (!isAutoFinish) loadOrders()
+                }
+            }
+            .addOnFailureListener { e ->
+                if (!isAdded) return@addOnFailureListener
+                Toast.makeText(context, "Gagal: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 }

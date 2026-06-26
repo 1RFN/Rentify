@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -40,6 +40,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".view.shared.SecurityActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".view.owner.DashboardOwnerActivity"
             android:exported="false" />
 
@@ -53,6 +57,14 @@
 
         <activity
             android:name=".view.renter.ItemDetailActivity"
+            android:exported="false"/>
+        
+        <activity
+            android:name=".view.renter.AddReviewActivity"
+            android:exported="false"/>
+
+        <activity
+            android:name=".view.shared.NotificationActivity"
             android:exported="false"/>
     </application>
 
